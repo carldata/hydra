@@ -8,11 +8,12 @@ Interface to this engine is based on Kafka
  
 ## Quick start
 
-### Prepare Kafka
+### Run Kafka
 
+We will use Docker to run Kafka 
 ```bash
-bin/zookeeper-server-start.sh config/zookeeper.properties
-bin/kafka-server-start.sh config/server.properties
+docker run -p 2181:2181 -p 9092:9092 spotify/kafka
+
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataIn
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataOut
 ```
