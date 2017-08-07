@@ -17,12 +17,13 @@ Get image by running the following command
 ```docker pull spotify/kafka
 ```
 
-```bash
-docker run -p 2181:2181 -p 9092:9092 spotify/kafka```
+```bash docker run -p 2181:2181 -p 9092:9092 spotify/kafka
+```
 
 ```bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataIn
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataOut
 ```
+
 Hint: you can find the kafka sh commands in /opt folder
 
 ### Run hydra
