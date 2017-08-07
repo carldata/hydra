@@ -12,19 +12,26 @@ Interface to this engine is based on Kafka
 
 We will use Docker to run Kafka
 
-Get image by running the following command
+Get our Docker image of interest by running the following command:
 
-```docker pull spotify/kafka
+`docker pull spotify/kafka`
+
+Run Kafka docker image:
+
+`bash docker run -p 2181:2181 -p 9092:9092 spotify/kafka`
+
+Run bash session in a running docker container:
+
+`docker exec -it [idOfRunningContainer] bash`
+
+While in bash, setup some Kafka topics:
+
 ```
-
-```bash docker run -p 2181:2181 -p 9092:9092 spotify/kafka
-```
-
-```bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataIn
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataIn
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataOut
 ```
 
-Hint: you can find the kafka sh commands in /opt folder
+Hint: you can find the kafka sh commands in /opt folder of the running container.
 
 ### Run hydra
  
