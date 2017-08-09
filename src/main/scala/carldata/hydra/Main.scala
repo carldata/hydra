@@ -6,10 +6,15 @@ import java.util.concurrent.TimeUnit
 
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams._
+import org.apache.kafka.streams.state.{KeyValueStore, Stores}
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder, KTable}
+import carldata.sf.Interpreter
+import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
 
 import scala.collection.JavaConverters.asJavaIterableConverter
 import java.util.logging.Logger
+
+import scala.collection.mutable
 
 /**
   * Main application.
@@ -17,7 +22,8 @@ import java.util.logging.Logger
   * Connects to the Kafka topics and process events.
   */
 object Main {
-
+  val moduleMap: mutable.Map[String, Interpreter] = mutable.Map()
+  val realTimeActions: mutable.Set[RealTimeRecord] = mutable.Set()
   private val logger = Logger.getLogger("Hydra")
 
   case class Params(kafkaBroker: String)
@@ -42,6 +48,13 @@ object Main {
     val builder: KStreamBuilder = new KStreamBuilder()
     val dataStream: KStream[String, String] = builder.stream("DataIn")
     dataStream.to("DataOut")
+
+
+    val commandListener = CommandListener
+    val clStream: KStream[String, String] = builder.stream("hydra_rt")
+    clStream.process(commandListener.suplifier)
+    val rtp = new RealTimeProcessing()
+    dataStream.process(rtp.suplifier)
 
     val streams: KafkaStreams = new KafkaStreams(builder, config)
     streams.start()
