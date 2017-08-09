@@ -6,6 +6,9 @@ import java.util.concurrent.TimeUnit
 
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams._
+import org.apache.kafka.streams.processor.StateStoreSupplier
+
+
 import org.apache.kafka.streams.state.{KeyValueStore, Stores}
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder, KTable}
 import carldata.sf.Interpreter
@@ -13,6 +16,8 @@ import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
 
 import scala.collection.JavaConverters.asJavaIterableConverter
 import java.util.logging.Logger
+
+import org.apache.kafka.streams.processor.TopologyBuilder
 
 import scala.collection.mutable
 
@@ -49,18 +54,26 @@ object Main {
     val dataStream: KStream[String, String] = builder.stream("DataIn")
     dataStream.to("DataOut")
 
+    val listener = Listener
+    val clBuilder : TopologyBuilder = new TopologyBuilder()
+    clBuilder.addSource("CL_source","hydra_rt")
+      .addProcessor("CL_process",listener.command, "CL_source")
 
-    val commandListener = CommandListener
-    val clStream: KStream[String, String] = builder.stream("hydra_rt")
-    clStream.process(commandListener.suplifier)
-    val rtp = new RealTimeProcessing()
-    dataStream.process(rtp.suplifier)
+    val dlBuilder : TopologyBuilder = new TopologyBuilder()
+    dlBuilder.addSource("DL_source","data")
+      .addProcessor("DL_process",listener.data,"DL_source")
+
 
     val streams: KafkaStreams = new KafkaStreams(builder, config)
     streams.start()
-
+    val streams2: KafkaStreams = new KafkaStreams(clBuilder, config)
+    streams2.start()
+    val streams3: KafkaStreams = new KafkaStreams(dlBuilder, config)
+    streams3.start()
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       streams.close(10, TimeUnit.SECONDS)
+      streams2.close(10, TimeUnit.SECONDS)
+      streams3.close(10, TimeUnit.SECONDS)
       logger.info("Hydra stopped")
     }))
   }
