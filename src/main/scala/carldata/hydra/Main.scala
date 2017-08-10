@@ -1,23 +1,14 @@
 package carldata.hydra
 
-import java.lang.Long
 import java.util.Properties
 import java.util.concurrent.TimeUnit
-
-import org.apache.kafka.common.serialization._
-import org.apache.kafka.streams._
-import org.apache.kafka.streams.processor.StateStoreSupplier
-
-
-import org.apache.kafka.streams.state.{KeyValueStore, Stores}
-import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder, KTable}
-import carldata.sf.Interpreter
-import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
-
-import scala.collection.JavaConverters.asJavaIterableConverter
 import java.util.logging.Logger
 
-import org.apache.kafka.streams.processor.TopologyBuilder
+import carldata.hs.RealTime.RealTimeRecord
+import carldata.sf.Interpreter
+import org.apache.kafka.common.serialization._
+import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
+import org.apache.kafka.streams.{KafkaStreams, _}
 
 import scala.collection.mutable
 
@@ -50,30 +41,24 @@ object Main {
     val params = parseArgs(args)
     logger.info("Hydra started: " + params)
     val config = buildConfig(params)
+    val listener = Listener
     val builder: KStreamBuilder = new KStreamBuilder()
     val dataStream: KStream[String, String] = builder.stream("DataIn")
     dataStream.to("DataOut")
 
-    val listener = Listener
-    val clBuilder : TopologyBuilder = new TopologyBuilder()
-    clBuilder.addSource("CL_source","hydra_rt")
-      .addProcessor("CL_process",listener.command, "CL_source")
 
-    val dlBuilder : TopologyBuilder = new TopologyBuilder()
-    dlBuilder.addSource("DL_source","data")
-      .addProcessor("DL_process",listener.data,"DL_source")
+    builder.addSource("DL_source", "data")
+      .addProcessor("DL_process", listener.data, "DL_source")
 
+    builder.addSource("CL_source", "hydra_rt")
+      .addProcessor("CL_process", listener.command, "CL_source")
 
     val streams: KafkaStreams = new KafkaStreams(builder, config)
+
     streams.start()
-    val streams2: KafkaStreams = new KafkaStreams(clBuilder, config)
-    streams2.start()
-    val streams3: KafkaStreams = new KafkaStreams(dlBuilder, config)
-    streams3.start()
+
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       streams.close(10, TimeUnit.SECONDS)
-      streams2.close(10, TimeUnit.SECONDS)
-      streams3.close(10, TimeUnit.SECONDS)
       logger.info("Hydra stopped")
     }))
   }
