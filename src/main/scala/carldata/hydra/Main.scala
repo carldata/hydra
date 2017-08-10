@@ -1,15 +1,16 @@
 package carldata.hydra
 
-import java.lang.Long
 import java.util.Properties
 import java.util.concurrent.TimeUnit
-
-import org.apache.kafka.common.serialization._
-import org.apache.kafka.streams._
-import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder, KTable}
-
-import scala.collection.JavaConverters.asJavaIterableConverter
 import java.util.logging.Logger
+
+import carldata.hs.RealTime.RealTimeRecord
+import carldata.sf.Interpreter
+import org.apache.kafka.common.serialization._
+import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
+import org.apache.kafka.streams.{KafkaStreams, _}
+
+import scala.collection.mutable
 
 /**
   * Main application.
@@ -17,7 +18,8 @@ import java.util.logging.Logger
   * Connects to the Kafka topics and process events.
   */
 object Main {
-
+  val moduleMap: mutable.Map[String, Interpreter] = mutable.Map()
+  val realTimeActions: mutable.Set[RealTimeRecord] = mutable.Set()
   private val logger = Logger.getLogger("Hydra")
 
   case class Params(kafkaBroker: String)
@@ -39,11 +41,20 @@ object Main {
     val params = parseArgs(args)
     logger.info("Hydra started: " + params)
     val config = buildConfig(params)
+    val listener = Listener
     val builder: KStreamBuilder = new KStreamBuilder()
     val dataStream: KStream[String, String] = builder.stream("DataIn")
     dataStream.to("DataOut")
 
+
+    builder.addSource("DL_source", "data")
+      .addProcessor("DL_process", listener.data, "DL_source")
+
+    builder.addSource("CL_source", "hydra_rt")
+      .addProcessor("CL_process", listener.command, "CL_source")
+
     val streams: KafkaStreams = new KafkaStreams(builder, config)
+
     streams.start()
 
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
