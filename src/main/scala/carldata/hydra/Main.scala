@@ -7,7 +7,6 @@ import java.util.logging.Logger
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.{KafkaStreams, _}
-//import scala.collection.JavaConverters.asJavaIterableConverter
 import scala.collection.JavaConverters._
 
 /**

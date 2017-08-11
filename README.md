@@ -10,41 +10,35 @@ Interface to this engine is based on Kafka
 
 ### Run Kafka
 
-We will use Docker to run Kafka
 
-Get our Docker image of interest by running the following command:
-
-`docker pull spotify/kafka`
-
-Run Kafka docker image:
-
-`bash docker run -p 2181:2181 -p 9092:9092 spotify/kafka`
-
-Run bash session in a running docker container:
-
-`docker exec -it [idOfRunningContainer] bash`
-
-While in bash, setup some Kafka topics:
-
-```
-bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataIn
-bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic DataOut
+Run Zookeeper and Kafka and create topics
+```bash
+bin/zookeeper-server-start.sh config/zookeeper.properties
+bin/kafka-server-start.sh config/server.properties
 ```
 
-Hint: you can find the kafka sh commands in /opt folder of the running container.
+Prepare Kafka. This should be run only once
+```bash
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic data
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic hydra-rt
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic theia
+bin/kafka-topics.sh --zookeeper 13.91.102.62:2181 --list
+```
 
-### Run hydra
- 
  ```bash
 sbt assembly
 java -jar target/scala-2.12/hydra.jar 
  ```
 
-### Send some data
+Run consumer to listen to the topic:
+
 ```bash
-bin/kafka-console-producer.sh --broker-list localhost:9092 --topic DataIn
-bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic DataOut --from-beginning
+bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic data
 ```
+
+### Feed some data
+
+Use [Theia](https://github.com/carldata/theia) as a data generator.
 
  
 # Join in!
