@@ -4,13 +4,11 @@ import java.util.Properties
 import java.util.concurrent.TimeUnit
 import java.util.logging.Logger
 
-import carldata.hs.RealTime.RealTimeRecord
-import carldata.sf.Interpreter
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.{KafkaStreams, _}
-
-import scala.collection.mutable
+//import scala.collection.JavaConverters.asJavaIterableConverter
+import scala.collection.JavaConverters._
 
 /**
   * Main application.
@@ -18,49 +16,61 @@ import scala.collection.mutable
   * Connects to the Kafka topics and process events.
   */
 object Main {
-  val moduleMap: mutable.Map[String, Interpreter] = mutable.Map()
-  val realTimeActions: mutable.Set[RealTimeRecord] = mutable.Set()
+
   private val logger = Logger.getLogger("Hydra")
 
-  case class Params(kafkaBroker: String)
+  /** Memory db with computation which should be triggered by data topic */
+  val computationsDB = new ComputationDB()
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+  val dataProcessor = new DataProcessor(computationsDB)
+
+  case class Params(kafkaBroker: String, prefix: String)
+
+  /** Command line parser */
+  def parseArgs(args: Array[String]): Params = {
+    val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
+    val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
+    Params(kafka, prefix)
+  }
 
   def buildConfig(params: Params): Properties = {
     val p = new Properties()
     p.put(StreamsConfig.APPLICATION_ID_CONFIG, "hydra")
     p.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, params.kafkaBroker)
-    p.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass)
-    p.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass)
+    p.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
+    p.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
     p
-  }
-
-  def parseArgs(args: Array[String]): Params = {
-    Params("localhost:9092")
   }
 
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
     logger.info("Hydra started: " + params)
     val config = buildConfig(params)
-    val listener = Listener
+    // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    val dataStream: KStream[String, String] = builder.stream("DataIn")
-    dataStream.to("DataOut")
+    buildRealtimeStream(builder)
+    buildDataStream(builder)
 
-
-    builder.addSource("DL_source", "data")
-      .addProcessor("DL_process", listener.data, "DL_source")
-
-    builder.addSource("CL_source", "hydra_rt")
-      .addProcessor("CL_process", listener.command, "CL_source")
-
-    val streams: KafkaStreams = new KafkaStreams(builder, config)
-
+    // Start topology
+    val streams = new KafkaStreams(builder, config)
     streams.start()
-
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       streams.close(10, TimeUnit.SECONDS)
       logger.info("Hydra stopped")
     }))
+  }
+
+  /** Data topic processing pipeline */
+  def buildDataStream(builder: KStreamBuilder): Unit = {
+    val ds: KStream[String, String] = builder.stream("data")
+    val dsOut: KStream[String, String] = ds.flatMapValues( x => dataProcessor.process(x).asJava)
+    dsOut.to("data")
+  }
+
+  /** Data topic processing pipeline */
+  def buildRealtimeStream(builder: KStreamBuilder): Unit = {
+    val cs: KStream[String, String] = builder.stream("hydra-rt")
+    val _: KStream[String, Unit] = cs.mapValues(x => rtCmdProcessor.process(x))
   }
 }
 
