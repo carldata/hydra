@@ -16,6 +16,7 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     * The number of output events depends on how many computations are defined on given channel
     */
   def process(jsonStr: String): Unit = {
+    println(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
         val comp = Computation(calculationId, trigger, script, outputChannel)
