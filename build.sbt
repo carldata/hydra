@@ -10,10 +10,11 @@ libraryDependencies ++= Seq(
   "io.spray" %% "spray-json" % "1.3.3" ,
   "io.github.carldata" %% "hydra-streams" % "0.3.0",
   "io.github.carldata" %% "flow-script" % "0.6.0",
+  "ch.qos.logback" % "logback-classic" % "1.2.3" % Runtime,
 
   // Test dependencies
-  "com.madewithtea" %% "mockedstreams" % "1.3.0" % "test",
-  "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+  "com.madewithtea" %% "mockedstreams" % "1.3.0" % Test,
+  "org.scalatest" %% "scalatest" % "3.0.1" % Test
 
 )
 

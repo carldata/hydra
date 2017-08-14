@@ -2,11 +2,12 @@ package carldata.hydra
 
 import java.util.Properties
 import java.util.concurrent.TimeUnit
-import java.util.logging.Logger
 
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.{KafkaStreams, _}
+import org.slf4j.LoggerFactory
+
 import scala.collection.JavaConverters._
 
 /**
@@ -16,20 +17,19 @@ import scala.collection.JavaConverters._
   */
 object Main {
 
-  private val logger = Logger.getLogger("Hydra")
+  private val Log = LoggerFactory.getLogger("Hydra")
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
 
-  case class Params(kafkaBroker: String, prefix: String)
+  case class Params(kafkaBroker: String)
 
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
     val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
-    val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
-    Params(kafka, prefix)
+    Params(kafka)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -43,7 +43,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
-    logger.info("Hydra started: " + params)
+    Log.info("Hydra started: " + params)
     val config = buildConfig(params)
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
@@ -55,7 +55,7 @@ object Main {
     streams.start()
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       streams.close(10, TimeUnit.SECONDS)
-      logger.info("Hydra stopped")
+      Log.info("Hydra stopped")
     }))
   }
 
