@@ -1,7 +1,8 @@
 package carldata.hydra
 
+import carldata.sf.Interpreter
+
 import scala.collection.mutable
-import carldata.sf.compiler.Executable.ExecCode
 
 /**
   * This memory db contains information about computations which should be run in RealTime mode.
@@ -10,7 +11,7 @@ import carldata.sf.compiler.Executable.ExecCode
   */
 object ComputationDB{
 
-  case class Computation(id: String, srcChannelId: String, script: ExecCode, destChannelId: String)
+  case class Computation(id: String, srcChannelId: String, script: Interpreter, destChannelId: String)
 }
 
 

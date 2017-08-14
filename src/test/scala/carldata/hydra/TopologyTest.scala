@@ -16,8 +16,15 @@ import spray.json._
 
 object TopologyTest {
 
+  val code =
+    """
+      |module Test1
+      |
+      |def main(dt: DateTime, a: Number): Number = a + 1
+    """.stripMargin
+
   val computationSet1 = Seq(
-    RealTimeRecord(AddAction, "calc1", "", "c3", "c-out")
+    RealTimeRecord(AddAction, "calc1", code, "c3", "c-out")
   )
 
   val inputSet1 = Seq(
@@ -83,7 +90,7 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(2).ts ,1.0f))
+    val expected = Seq(DataRecord("c-out", inputSet5(2).ts ,2.0f))
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
