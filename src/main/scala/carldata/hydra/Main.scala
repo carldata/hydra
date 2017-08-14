@@ -69,7 +69,7 @@ object Main {
   /** Data topic processing pipeline */
   def buildRealtimeStream(builder: KStreamBuilder): Unit = {
     val cs: KStream[String, String] = builder.stream("hydra-rt")
-    val _: KStream[String, Unit] = cs.mapValues(x => rtCmdProcessor.process(x))
+    cs.foreach((_,v) => rtCmdProcessor.process(v))
   }
 }
 
