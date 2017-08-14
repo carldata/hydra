@@ -3,6 +3,8 @@ package carldata.hydra
 import carldata.hs.RealTime.RealTimeJsonProtocol._
 import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
 import carldata.hydra.ComputationDB.Computation
+import carldata.sf.Compiler.compile
+import carldata.sf.{Core, Interpreter}
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
@@ -18,9 +20,14 @@ class RTCommandProcessor(computationDB: ComputationDB) {
   def process(jsonStr: String): Unit = {
     println(jsonStr)
     deserialize(jsonStr) match {
-      case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        val comp = Computation(calculationId, trigger, script, outputChannel)
+      case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) => {
+        val execCode = compile(script, Seq(Core.header))
+          .map { ast => new Interpreter(ast, new Core()) }
+          .right.get
+        val comp = Computation(calculationId, trigger, execCode, outputChannel)
         computationDB.add(comp)
+      }
+
       case Some(RealTimeRecord(RemoveAction, calculationId, _, _, _)) =>
         computationDB.remove(calculationId)
       case _ =>

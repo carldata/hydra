@@ -4,6 +4,8 @@ import java.time.LocalDateTime
 
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
+import carldata.sf.Interpreter
+import carldata.sf.Runtime.{NumberValue, StringValue}
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
@@ -19,12 +21,15 @@ class DataProcessor(computationDB: ComputationDB) {
   def process(jsonStr: String): Seq[String] = {
     val input = deserialize(jsonStr)
     computationDB.findByChannel(input.channel)
-      .map(c => serialize(DataRecord(c.destChannelId, input.ts, input.value)))
+      .map(e => (e.destChannelId, execute(e.script, input.ts, input.value)))
+      .map(x => x._2.map(y => DataRecord(x._1, input.ts, y)))
+      .flatMap(_.toList)
+      .map(serialize)
   }
 
   /** Convert from json with exception handling */
   def deserialize(rec: String): DataRecord = {
-    try{
+    try {
       JsonParser(rec).convertTo[DataRecord]
     } catch {
       case _: ParsingException =>
@@ -34,5 +39,15 @@ class DataProcessor(computationDB: ComputationDB) {
 
   /** Serialize message back to json */
   def serialize(rec: DataRecord): String = rec.toJson.compactPrint
+
+  def execute(exec: Interpreter, ts: LocalDateTime, value: Float): Option[Float] = {
+
+    exec.run("main", Seq(StringValue(ts.toString), NumberValue(value))).right.toOption
+      .flatMap {
+        case NumberValue(v) => Some(v)
+        case _ => None
+      }
+
+  }
 
 }

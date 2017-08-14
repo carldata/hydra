@@ -1,5 +1,7 @@
 package carldata.hydra
 
+import carldata.sf.Interpreter
+
 import scala.collection.mutable
 
 /**
@@ -9,7 +11,7 @@ import scala.collection.mutable
   */
 object ComputationDB{
 
-  case class Computation(id: String, srcChannelId: String, script: String, destChannelId: String)
+  case class Computation(id: String, srcChannelId: String, script: Interpreter, destChannelId: String)
 }
 
 
