@@ -1,0 +1,44 @@
+# Increments incoming data
+
+This script will increments data.
+
+## hydra-rt
+
+trigger ID, output ID
+
+```hydra-rt
+trigger=in-1
+output=out-1
+```
+
+## Script
+
+Increment function.
+
+```script
+module Testcase
+
+def main(t: DateTime, v: Number): Number = v + 1
+```
+
+## Records
+channel_id,timestamp,value
+
+```records
+in-1,1451606400,2
+in-2,1451607400,3
+in-1,1451607400,4
+in-2,1451607400,5
+in-1,1451608400,8
+```
+
+## Expected output
+channel_id,timestamp,value
+
+```expected
+out-1,1451606400,3
+out-1,1451607400,5
+out-1,1451608400,9
+```
+
+
