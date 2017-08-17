@@ -61,14 +61,14 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildDataStream(builder: KStreamBuilder, prefix: String): Unit = {
+  def buildDataStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
     val ds: KStream[String, String] = builder.stream(prefix + "data")
     val dsOut: KStream[String, String] = ds.flatMapValues(x => dataProcessor.process(x).asJava)
     dsOut.to(prefix + "data")
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
     cs.foreach((_, v) => rtCmdProcessor.process(v))
   }
