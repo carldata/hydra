@@ -65,8 +65,8 @@ class Testcases extends WordSpec with Matchers {
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildDataStream(builder,"")
+        Main.buildRealtimeStream(builder,"")
       }
 
     streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)

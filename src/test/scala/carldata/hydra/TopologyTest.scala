@@ -66,7 +66,7 @@ class TopologyTest extends FlatSpec with Matchers {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
 
     val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildDataStream(builder))
+      .topology(builder => Main.buildDataStream(builder, ""))
       .input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, 1)
 
@@ -78,8 +78,8 @@ class TopologyTest extends FlatSpec with Matchers {
 
     MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildDataStream(builder, "")
+        Main.buildRealtimeStream(builder, "")
       }
       .input("hydra-rt", strings, strings, input)
       .output[String, String]("hydra-rt", strings, strings, input.size)
@@ -90,12 +90,12 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(2).ts ,2.0f))
+    val expected = Seq(DataRecord("c-out", inputSet5(2).ts, 2.0f))
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildDataStream(builder, "")
+        Main.buildRealtimeStream(builder, "")
       }
     streams.input("hydra-rt", strings, strings, cmd)
 
