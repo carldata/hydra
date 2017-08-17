@@ -90,7 +90,7 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(2).ts ,2.0f))
+    val expected = Seq(DataRecord("c-out", inputSet5(2).ts, 2.0f))
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>

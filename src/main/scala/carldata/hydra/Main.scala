@@ -24,12 +24,13 @@ object Main {
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
 
-  case class Params(kafkaBroker: String)
+  case class Params(kafkaBroker: String, prefix: String)
 
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
     val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
-    Params(kafka)
+    val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
+    Params(kafka, prefix)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -47,8 +48,8 @@ object Main {
     val config = buildConfig(params)
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder)
-    buildDataStream(builder)
+    buildRealtimeStream(builder, params.prefix)
+    buildDataStream(builder, params.prefix)
 
     // Start topology
     val streams = new KafkaStreams(builder, config)
@@ -60,16 +61,16 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildDataStream(builder: KStreamBuilder): Unit = {
-    val ds: KStream[String, String] = builder.stream("data")
-    val dsOut: KStream[String, String] = ds.flatMapValues( x => dataProcessor.process(x).asJava)
-    dsOut.to("data")
+  def buildDataStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
+    val ds: KStream[String, String] = builder.stream(prefix + "data")
+    val dsOut: KStream[String, String] = ds.flatMapValues(x => dataProcessor.process(x).asJava)
+    dsOut.to(prefix + "data")
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder): Unit = {
-    val cs: KStream[String, String] = builder.stream("hydra-rt")
-    cs.foreach((_,v) => rtCmdProcessor.process(v))
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
+    val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
+    cs.foreach((_, v) => rtCmdProcessor.process(v))
   }
 }
 

@@ -37,7 +37,7 @@ class Testcases extends WordSpec with Matchers {
     new File(folder)
       .listFiles
       .filter(x => x.isFile && x.getName.endsWith(".test"))
-      .map { f => (f.getName, Source.fromFile(f).mkString) }
+      .map { f => (f.getName, Source.fromFile(f).getLines().mkString("\n")) }
   }
 
   def mkScriptTest(s: Seq[(String, String)]): Seq[Either[String, Testcases.this.ScriptTest]] = {
@@ -112,8 +112,6 @@ class Testcases extends WordSpec with Matchers {
 
   /** Select single section from testcase */
   def getSection(s: String, c: String): Option[String] = {
-    Some(s.split("```" + c)(1).split("```")(0)
-      .replace("\r", System.lineSeparator)
-      .replace("\n", System.lineSeparator))
+    Some(s.split("```" + c)(1).split("```")(0))
   }
 }
