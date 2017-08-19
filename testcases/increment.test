@@ -16,8 +16,6 @@ output=out-1
 Increment function.
 
 ```script
-module Testcase
-
 def main(t: DateTime, v: Number): Number = v + 1
 ```
 

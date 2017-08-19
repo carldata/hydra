@@ -16,10 +16,8 @@ import spray.json._
 
 object TopologyTest {
 
-  val code =
+  val code: String =
     """
-      |module Test1
-      |
       |def main(dt: DateTime, a: Number): Number = a + 1
     """.stripMargin
 
@@ -90,7 +88,7 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(2).ts, 2.0f))
+    val expected = Seq(DataRecord("c-out", inputSet5(2).timestamp, 2.0f))
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
@@ -102,7 +100,7 @@ class TopologyTest extends FlatSpec with Matchers {
     val received = streams.input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, 2)
 
-    fromJson(received).filter(_.channel == "c-out") shouldEqual expected
+    fromJson(received).filter(_.channelId == "c-out") shouldEqual expected
   }
 
 }

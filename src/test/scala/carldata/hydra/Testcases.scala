@@ -72,7 +72,7 @@ class Testcases extends WordSpec with Matchers {
     streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, s.expected.size)
       .map(_._2.parseJson.convertTo[DataRecord])
-      .filter(_.channel == s.output) shouldEqual s.expected
+      .filter(_.channelId == s.output) shouldEqual s.expected
   }
 
   def groupToEither(name: String, code: Option[String], trigger: Option[String], output: Option[String], records: Option[Seq[DataRecord]], expected: Option[Seq[DataRecord]]): Either[String, ScriptTest] = {

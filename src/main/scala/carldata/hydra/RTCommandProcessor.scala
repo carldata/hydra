@@ -4,7 +4,7 @@ import carldata.hs.RealTime.RealTimeJsonProtocol._
 import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
 import carldata.hydra.ComputationDB.Computation
 import carldata.sf.Compiler.compile
-import carldata.sf.{Core, Interpreter}
+import carldata.sf.{Interpreter, core}
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -24,8 +24,8 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        compile(script, Seq(Core.header))
-          .map { ast => new Interpreter(ast, new Core()) }
+        compile(script, Seq(core.Math.header))
+          .map { ast => new Interpreter(ast, Seq(new core.Math())) }
           .foreach { exec =>
             val comp = Computation(calculationId, trigger, exec, outputChannel)
             computationDB.add(comp)

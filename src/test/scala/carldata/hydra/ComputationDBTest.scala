@@ -1,20 +1,17 @@
 package carldata.hydra
 
 import carldata.hydra.ComputationDB.Computation
+import carldata.sf.{Compiler, Interpreter, core}
 import org.scalatest._
-import carldata.sf.Compiler
-import carldata.sf.{Core, Interpreter}
 
 /** Tests for ComputationDB */
 class ComputationDBTest extends FlatSpec with Matchers {
-  val code =
+  val code: String =
     """
-      |module Test1
-      |
       |def main(dt: DateTime, a: Number): Number = a
     """.stripMargin
-  val interpreter = Compiler.compile(code, Seq(Core.header))
-    .map { ast => new Interpreter(ast, new Core()) }
+  val interpreter: Interpreter = Compiler.compile(code, Seq(core.Math.header))
+    .map { ast => new Interpreter(ast, Seq(new core.Math())) }
     .right.get
 
   "ComputationDB" should "add new computation" in {
