@@ -25,13 +25,15 @@ object Main {
   val dataProcessor = new DataProcessor(computationsDB)
   val batchProcessor = new BatchProcessor()
 
-  case class Params(kafkaBroker: String, prefix: String)
+  case class Params(kafkaBroker: String, prefix: String, db: String, keyspace: String)
 
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
     val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
     val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
-    Params(kafka, prefix)
+    val db = args.find(_.contains("--db=")).map(_.substring(5)).getOrElse("localhost")
+    val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default")
+    Params(kafka, prefix, db, keyspace)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -50,7 +52,9 @@ object Main {
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
     buildRealtimeStream(builder, params.prefix)
+    buildBatchStream(builder, params)
     buildDataStream(builder, params.prefix)
+
 
     // Start topology
     val streams = new KafkaStreams(builder, config)
@@ -75,9 +79,9 @@ object Main {
   }
 
   /** Batch processing pipeline */
-  def buildBatchStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
-    val cs: KStream[String, String] = builder.stream(prefix + "hydra-batch")
-    cs.foreach((_, v) => batchProcessor.process(v))
+  def buildBatchStream(builder: KStreamBuilder, params: Params): Unit = {
+    val cs: KStream[String, String] = builder.stream(params.prefix + "hydra-batch")
+    cs.foreach((_, v) => batchProcessor.process(v,params.db,params.keyspace))
   }
 }
 
