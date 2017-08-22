@@ -23,6 +23,7 @@ object Main {
   val computationsDB = new ComputationDB()
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
+  val batchProcessor = new BatchProcessor()
 
   case class Params(kafkaBroker: String, prefix: String)
 
@@ -71,6 +72,12 @@ object Main {
   def buildRealtimeStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
     cs.foreach((_, v) => rtCmdProcessor.process(v))
+  }
+
+  /** Batch processing pipeline */
+  def buildBatchStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
+    val cs: KStream[String, String] = builder.stream(prefix + "hydra-batch")
+    cs.foreach((_, v) => batchProcessor.process(v))
   }
 }
 
