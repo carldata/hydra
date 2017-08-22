@@ -15,15 +15,15 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import java.time.format.DateTimeFormatterBuilder
 
-case class Data(channel: String, timestamp: String, flag: String, value: Float)
+case class DataRecord(channel: String, timestamp: String, value: Float)
 
 trait TimeSeriesDB {
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Unit // Future[TimeSeries[Float]]
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataRecord]] // Future[TimeSeries[Float]]
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]]
 }
 
-abstract class DataTable extends Table[DataTable, Data] with TimeSeriesDB {
+abstract class Data extends Table[Data, DataRecord] with TimeSeriesDB {
 
   object channel extends StringColumn with PartitionKey
 
@@ -31,17 +31,18 @@ abstract class DataTable extends Table[DataTable, Data] with TimeSeriesDB {
 
   object value extends FloatColumn
 
-  def getById(id: String): Future[Option[Data]] = {
+  def getById(id: String): Future[Option[DataRecord]] = {
     select.where(_.channel eqs id).one()
   }
 
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Unit = { // Future[TimeSeries[Float]] = {
-    //TODO: do not print result but return as timeseries
-
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataRecord]] = { // Future[TimeSeries[Float]] = {
+    //TODO
     select.where(_.channel eqs name)
       .and(_.timestamp gte convert(from))
       .and(_.timestamp lte convert(to))
-      .fetch().map { println }
+      .fetch
+
+
 
     /*TimeSeries.fromTimestamps(x.map { y => {
       (unixTimestamp(y.time), y.value)
@@ -52,6 +53,7 @@ abstract class DataTable extends Table[DataTable, Data] with TimeSeriesDB {
   }
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
+    println(name + "\t <=last!")
     select.where(_.channel eqs name)
       .orderBy(_.timestamp desc)
       .one() map {
@@ -89,17 +91,18 @@ abstract class DataTable extends Table[DataTable, Data] with TimeSeriesDB {
   }
 
   def convert(time: LocalDateTime): String = {
-    time.toString.replace('T', ' ')
+    time.toString
   }
 }
 
 class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraDB](keyspace) {
 
-  object dataTable extends DataTable with keyspace.Connector
+  object data extends Data with keyspace.Connector
 
 }
 
 /*
+//TODO
 class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {

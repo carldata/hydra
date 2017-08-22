@@ -38,7 +38,7 @@ object Main {
 
   def buildConfig(params: Params): Properties = {
     val p = new Properties()
-    p.put(StreamsConfig.APPLICATION_ID_CONFIG, "hydra")
+    p.put(StreamsConfig.APPLICATION_ID_CONFIG, params.prefix + "hydra")
     p.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, params.kafkaBroker)
     p.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
     p.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
@@ -81,7 +81,7 @@ object Main {
   /** Batch processing pipeline */
   def buildBatchStream(builder: KStreamBuilder, params: Params): Unit = {
     val cs: KStream[String, String] = builder.stream(params.prefix + "hydra-batch")
-    cs.foreach((_, v) => batchProcessor.process(v,params.db,params.keyspace))
+    cs.foreach((_, v) => batchProcessor.process(v, params.db, params.keyspace))
   }
 }
 

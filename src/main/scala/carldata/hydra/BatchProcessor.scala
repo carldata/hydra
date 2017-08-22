@@ -1,8 +1,6 @@
 package carldata.hydra
 
 
-import java.time.LocalDateTime
-
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Batch._
 import carldata.hs.EventBus._
@@ -10,6 +8,9 @@ import com.outworkers.phantom.dsl.ContactPoints
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
+
+import scala.concurrent.Await
+import scala.concurrent.duration.Duration
 
 class BatchProcessor {
 
@@ -21,10 +22,10 @@ class BatchProcessor {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
         //TODO: load data from cassandra
         val db = new CassandraDB(ContactPoints(Seq(dbName)).keySpace(keyspace))
-        db.dataTable.getSeries("",LocalDateTime.of(2013,3,18,9,40,0),LocalDateTime.of(2013,3,18,19,40,0))
-
+        val timeseries = Await.result(db.data.getSeries(inputChannelId, startDate, endDate), Duration.Inf) //it is for now List[Records]
+        timeseries.foreach(println) //test
+        println(Await.result(db.data.getLastValue(inputChannelId), Duration.Inf)) //test
         //TODO: Send event to event bus about starting batch job
-
 
         //TODO: compile script
 
