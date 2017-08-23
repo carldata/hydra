@@ -10,8 +10,8 @@ class ComputationDBTest extends FlatSpec with Matchers {
     """
       |def main(dt: DateTime, a: Number): Number = a
     """.stripMargin
-  val interpreter: Interpreter = Compiler.compile(code, Seq(core.Math.header))
-    .map { ast => new Interpreter(ast, Seq(new core.Math())) }
+  val interpreter: Interpreter = Compiler.compile(code, Seq(core.MathModule.header))
+    .map { ast => new Interpreter(ast, Seq(new core.MathModule())) }
     .right.get
 
   "ComputationDB" should "add new computation" in {

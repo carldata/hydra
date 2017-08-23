@@ -15,15 +15,15 @@ import scala.concurrent.duration._
 import scala.util.{Failure, Success}
 import java.time.format.DateTimeFormatterBuilder
 
-case class DataRecord(channel: String, timestamp: String, value: Float)
+case class DataEntity(channel: String, timestamp: String, value: Float)
 
 trait TimeSeriesDB {
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataRecord]] // Future[TimeSeries[Float]]
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataEntity]] // Future[TimeSeries[Float]]
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]]
 }
 
-abstract class Data extends Table[Data, DataRecord] with TimeSeriesDB {
+abstract class Data extends Table[Data, DataEntity] with TimeSeriesDB {
 
   object channel extends StringColumn with PartitionKey
 
@@ -31,11 +31,11 @@ abstract class Data extends Table[Data, DataRecord] with TimeSeriesDB {
 
   object value extends FloatColumn
 
-  def getById(id: String): Future[Option[DataRecord]] = {
+  def getById(id: String): Future[Option[DataEntity]] = {
     select.where(_.channel eqs id).one()
   }
 
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataRecord]] = { // Future[TimeSeries[Float]] = {
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataEntity]] = { // Future[TimeSeries[Float]] = {
     //TODO
     select.where(_.channel eqs name)
       .and(_.timestamp gte convert(from))

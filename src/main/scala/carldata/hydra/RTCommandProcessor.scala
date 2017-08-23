@@ -24,8 +24,8 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        compile(script, Seq(core.Math.header))
-          .map { ast => new Interpreter(ast, Seq(new core.Math())) }
+        compile(script, Seq(core.MathModule.header))
+          .map { ast => new Interpreter(ast, Seq(new core.MathModule())) }
           .foreach { exec =>
             val comp = Computation(calculationId, trigger, exec, outputChannel)
             computationDB.add(comp)

@@ -3,7 +3,7 @@ package carldata.hydra
 import java.time.LocalDateTime
 
 import carldata.hs.Data.DataJsonProtocol._
-import carldata.hs.Data.DataRecord
+import carldata.hs.Data._
 import carldata.sf.Interpreter
 import carldata.sf.Runtime.{NumberValue, StringValue}
 import spray.json.JsonParser.ParsingException
