@@ -80,8 +80,9 @@ object Main {
 
   /** Batch processing pipeline */
   def buildBatchStream(builder: KStreamBuilder, params: Params): Unit = {
-    val cs: KStream[String, String] = builder.stream(params.prefix + "hydra-batch")
-    cs.foreach((_, v) => batchProcessor.process(v, params.db, params.keyspace))
+    val ds: KStream[String, String] = builder.stream(params.prefix + "hydra-batch")
+    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, params.db, params.keyspace).asJava)
+    dsOut.to(params.prefix + "data")
   }
 }
 

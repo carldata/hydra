@@ -3,6 +3,8 @@ package carldata.hydra
 
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Batch._
+import carldata.hs.Data.DataRecord
+import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.EventBus._
 import carldata.sf.Compiler.compile
 import carldata.sf.core.TimeSeriesModule.TimeSeriesValue
@@ -19,29 +21,33 @@ class BatchProcessor {
 
   private val Log = LoggerFactory.getLogger("Hydra")
 
-  def process(jsonStr: String, dbName: String, keyspace: String): Unit = {
+  def process(jsonStr: String, dbName: String, keyspace: String): Seq[String] = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
-        //TODO: load data from cassandra
+        //load data from cassandra
         val db = new CassandraDB(ContactPoints(Seq(dbName)).keySpace(keyspace))
         val ts = Await.result(db.data.getSeries(inputChannelId, startDate, endDate), Duration.Inf)
 
         //TODO: Send event to event bus about starting batch job
 
-        //TODO: compile script
+        //compile script
+        //Execute script with the loaded time series
         val result = compile(script, Seq(core.MathModule.header, core.DateTimeModule.header, core.TimeSeriesModule.header))
           .flatMap(exec => Interpreter(exec).run("main", Seq(TimeSeriesValue(ts))))
 
-        //TODO: Execute script with the loaded time series
+        //Save returned time series to the output channel
+        val vs = result.right.get.asInstanceOf[TimeSeriesValue].ts.values
+        val ids = result.right.get.asInstanceOf[TimeSeriesValue].ts.index
 
-        //TODO: Save returned time series to the output channel
+        ids.zip(vs)
+          .map(x => DataRecord(outputChannelId, x._1, x._2))
+          .map(serialize)
 
         //TODO: Send event to event bus that batch job has ended.
 
       }
-
-      case _ =>
+      case _ => Seq()
     }
 
   }
@@ -55,8 +61,7 @@ class BatchProcessor {
     }
   }
 
-  /** Convert EventBus to json */
-  def serialize(rec: EventBusRecord): String = {
-    ""
-  }
+
+  /** Serialize message back to json */
+  def serialize(rec: DataRecord): String = rec.toJson.compactPrint
 }
