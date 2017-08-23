@@ -1,24 +1,19 @@
 package carldata.hydra
 
-//import carldata.series.TimeSeries
-import com.outworkers.phantom.dsl._
-import com.outworkers.phantom.builder.query.{CreateQuery, ExecutableQuery}
-import java.sql.Timestamp
 import java.time._
-import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoField
-//import java.util.UUID
 
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.{Await, Future}
-import scala.concurrent.duration._
-import scala.util.{Failure, Success}
+import carldata.series.TimeSeries
+import com.outworkers.phantom.dsl._
+
 import java.time.format.DateTimeFormatterBuilder
+
+import scala.concurrent.Future
 
 case class DataEntity(channel: String, timestamp: String, value: Float)
 
 trait TimeSeriesDB {
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataEntity]] // Future[TimeSeries[Float]]
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] //Future[List[DataEntity]]
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]]
 }
@@ -35,21 +30,15 @@ abstract class Data extends Table[Data, DataEntity] with TimeSeriesDB {
     select.where(_.channel eqs id).one()
   }
 
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[List[DataEntity]] = { // Future[TimeSeries[Float]] = {
-    //TODO
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
     select.where(_.channel eqs name)
       .and(_.timestamp gte convert(from))
       .and(_.timestamp lte convert(to))
       .fetch
-
-
-
-    /*TimeSeries.fromTimestamps(x.map { y => {
-      (unixTimestamp(y.time), y.value)
-    }
-    }.toSeq)
-*/
-
+      .map(x => new TimeSeries(x.map { y => {
+        (dateParse(y.timestamp), y.value)
+      }
+      }))
   }
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
@@ -59,11 +48,6 @@ abstract class Data extends Table[Data, DataEntity] with TimeSeriesDB {
       .one() map {
       x => x.map(c => (dateParse(c.timestamp), c.value))
     }
-  }
-
-  def convert(time: String): LocalDateTime = {
-    //LocalDateTime.ofInstant(Instant.ofEpochMilli(unixTimestamp(time) * 1000), ZoneId.systemDefault)
-    LocalDateTime.now
   }
 
   def dateParse(str: String): LocalDateTime = {
@@ -101,8 +85,6 @@ class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraD
 
 }
 
-/*
-//TODO
 class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
@@ -113,5 +95,5 @@ class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
     Future(ts.get(name).map(xs => (xs.index.last, xs.values.last)))
   }
 }
-*/
+
 
