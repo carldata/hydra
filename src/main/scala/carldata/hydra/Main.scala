@@ -3,6 +3,7 @@ package carldata.hydra
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
+import com.outworkers.phantom.connectors.ContactPoints
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.{KafkaStreams, _}
@@ -49,10 +50,11 @@ object Main {
     val params = parseArgs(args)
     Log.info("Hydra started: " + params)
     val config = buildConfig(params)
+    val db = new CassandraDB(ContactPoints(Seq(params.db)).keySpace(params.keyspace))
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
     buildRealtimeStream(builder, params.prefix)
-    buildBatchStream(builder, params)
+    buildBatchStream(builder, params.prefix,db)
     buildDataStream(builder, params.prefix)
 
 
@@ -79,10 +81,11 @@ object Main {
   }
 
   /** Batch processing pipeline */
-  def buildBatchStream(builder: KStreamBuilder, params: Params): Unit = {
-    val ds: KStream[String, String] = builder.stream(params.prefix + "hydra-batch")
-    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, params.db, params.keyspace).asJava)
-    dsOut.to(params.prefix + "data")
+  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB): Unit = {
+
+    val ds: KStream[String, String] = builder.stream(prefix + "hydra-batch")
+    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
+    dsOut.to(prefix + "data")
   }
 }
 

@@ -3,13 +3,11 @@ package carldata.hydra
 
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Batch._
-import carldata.hs.Data.DataRecord
 import carldata.hs.Data.DataJsonProtocol._
-import carldata.hs.EventBus._
+import carldata.hs.Data.DataRecord
 import carldata.sf.Compiler.compile
 import carldata.sf.core.TimeSeriesModule.TimeSeriesValue
 import carldata.sf.{Interpreter, core}
-import com.outworkers.phantom.dsl.ContactPoints
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -21,13 +19,13 @@ class BatchProcessor {
 
   private val Log = LoggerFactory.getLogger("Hydra")
 
-  def process(jsonStr: String, dbName: String, keyspace: String): Seq[String] = {
+  def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
         //load data from cassandra
-        val db = new CassandraDB(ContactPoints(Seq(dbName)).keySpace(keyspace))
-        val ts = Await.result(db.data.getSeries(inputChannelId, startDate, endDate), Duration.Inf)
+       // val db = new CassandraDB(ContactPoints(Seq(dbName)).keySpace(keyspace))
+        val ts = Await.result(db.getSeries(inputChannelId, startDate, endDate), Duration.Inf)
 
         //TODO: Send event to event bus about starting batch job
 

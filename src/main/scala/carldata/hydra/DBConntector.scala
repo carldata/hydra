@@ -18,7 +18,7 @@ trait TimeSeriesDB {
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]]
 }
 
-abstract class Data extends Table[Data, DataEntity] with TimeSeriesDB {
+abstract class Data extends Table[Data, DataEntity] {
 
   object channel extends StringColumn with PartitionKey
 
@@ -79,10 +79,13 @@ abstract class Data extends Table[Data, DataEntity] with TimeSeriesDB {
   }
 }
 
-class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraDB](keyspace) {
+class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraDB](keyspace) with TimeSeriesDB {
 
   object data extends Data with keyspace.Connector
 
+  override def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = data.getSeries(name, from, to)
+
+  override def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = data.getLastValue(name)
 }
 
 class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
