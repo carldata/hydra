@@ -15,7 +15,7 @@ import spray.json.JsonParser.ParsingException
 import spray.json._
 
 import scala.concurrent.Await
-import scala.concurrent.duration.Duration
+import scala.concurrent.duration._
 
 class BatchProcessor {
 
@@ -24,7 +24,7 @@ class BatchProcessor {
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
-        val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), Duration.apply(30, TimeUnit.SECONDS))
+        val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), 30.seconds)
 
         make(script).flatMap(exec => Interpreter(exec).run("main", Seq(TimeSeriesValue(inputTs)))) match {
           case Right(xs) =>
