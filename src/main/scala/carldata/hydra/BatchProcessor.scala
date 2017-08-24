@@ -1,15 +1,15 @@
 package carldata.hydra
 
 
+import java.util.concurrent.TimeUnit
+
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Batch._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
-import carldata.series.TimeSeries
-import carldata.sf.Compiler.compile
-import carldata.sf.Runtime.Value
+import carldata.sf.Compiler.make
+import carldata.sf.Interpreter
 import carldata.sf.core.TimeSeriesModule.TimeSeriesValue
-import carldata.sf.{Interpreter, core}
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -24,25 +24,23 @@ class BatchProcessor {
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
-        val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), Duration.Inf)
+        val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), Duration.apply(30, TimeUnit.SECONDS))
 
-        val result = compile(script, Seq(core.MathModule.header, core.DateTimeModule.header, core.TimeSeriesModule.header))
-          .flatMap(exec => Interpreter(exec).run("main", Seq(TimeSeriesValue(inputTs))))
-        val resultTs = getTimeSeries(result)
-        val vs = resultTs.values
-        val ids = resultTs.index
+        make(script).flatMap(exec => Interpreter(exec).run("main", Seq(TimeSeriesValue(inputTs)))) match {
+          case Right(xs) =>
+            val resultTs = xs.asInstanceOf[TimeSeriesValue].ts
+            val vs = resultTs.values
+            val ids = resultTs.index
+            ids.zip(vs)
+              .map(x => DataRecord(outputChannelId, x._1, x._2))
+              .map(serialize)
+          case _ => Seq()
+        }
 
-        ids.zip(vs)
-          .map(x => DataRecord(outputChannelId, x._1, x._2))
-          .map(serialize)
       }
       case _ => Seq()
     }
 
-  }
-
-  def getTimeSeries(s: Either[String, Value]): TimeSeries[Float] = {
-    s.right.get.asInstanceOf[TimeSeriesValue].ts
   }
 
   /** Convert from json with exception handling */

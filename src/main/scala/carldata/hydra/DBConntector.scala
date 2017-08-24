@@ -5,8 +5,7 @@ import java.time.temporal.ChronoField
 
 import carldata.series.TimeSeries
 import com.outworkers.phantom.dsl._
-
-import java.time.format.DateTimeFormatterBuilder
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 
 import scala.concurrent.Future
 
@@ -15,7 +14,6 @@ case class DataEntity(channel: String, timestamp: String, value: Float)
 trait TimeSeriesDB {
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] //Future[List[DataEntity]]
 
-  def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]]
 }
 
 abstract class Data extends Table[Data, DataEntity] {
@@ -75,7 +73,7 @@ abstract class Data extends Table[Data, DataEntity] {
   }
 
   def convert(time: LocalDateTime): String = {
-    time.toString
+    time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
   }
 }
 
@@ -85,7 +83,6 @@ class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraD
 
   override def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = data.getSeries(name, from, to)
 
-  override def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = data.getLastValue(name)
 }
 
 class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
@@ -94,9 +91,7 @@ class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
     Future(ts.get(name).get.slice(from, to))
   }
 
-  def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
-    Future(ts.get(name).map(xs => (xs.index.last, xs.values.last)))
-  }
+
 }
 
 

@@ -10,7 +10,7 @@ class ComputationDBTest extends FlatSpec with Matchers {
     """
       |def main(dt: DateTime, a: Number): Number = a
     """.stripMargin
-  val interpreter: Interpreter = Compiler.compile(code, Seq(core.MathModule.header))
+  val interpreter: Interpreter = Compiler.make(code)
     .map { ast => new Interpreter(ast, Seq(new core.MathModule())) }
     .right.get
 
