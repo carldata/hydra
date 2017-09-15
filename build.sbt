@@ -5,6 +5,7 @@ version := "0.2.0"
 scalaVersion := "2.12.3"
 
 libraryDependencies ++= Seq(
+  "org.scala-lang" % "scala-reflect" % "2.12.3",
   "org.apache.kafka" % "kafka-streams" % "0.11.0.0",
   "com.outworkers" %% "phantom-dsl" % "2.12.1" exclude("org.slf4j","log4j-over-slf4j"),
   "io.spray" %% "spray-json" % "1.3.3" ,
