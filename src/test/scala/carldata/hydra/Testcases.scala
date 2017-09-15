@@ -126,10 +126,10 @@ class Testcases extends WordSpec with Matchers {
       BatchRecord(s.input + s.output, s.code, s.input, s.output, LocalDateTime.parse(s.startDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME), LocalDateTime.parse(s.endDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME))
     )
     val strings: Serde[String] = Serdes.String()
-    val batch: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint))
-    val xs = s.records.map(x => x.timestamp)
-    val vs = s.records.map(x => x.value)
-    val ts: TimeSeries[Float] = TimeSeries.fromColumns(xs, vs)
+    val batch: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint)).toVector
+    val xs = s.records.map(x => x.timestamp).toVector
+    val vs = s.records.map(x => x.value).toVector
+    val ts: TimeSeries[Float] = TimeSeries(xs, vs)
     val db = new TestCaseDB(Map((s.input -> ts)))
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>

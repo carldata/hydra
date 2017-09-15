@@ -5,7 +5,6 @@ import java.time.LocalDateTime
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data._
 import carldata.sf.Interpreter
-import carldata.sf.Runtime.{NumberValue, StringValue}
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
@@ -42,9 +41,9 @@ class DataProcessor(computationDB: ComputationDB) {
 
   def execute(exec: Interpreter, ts: LocalDateTime, value: Float): Option[Float] = {
 
-    exec.run("main", Seq(StringValue(ts.toString), NumberValue(value))).right.toOption
+    exec.run("main", Seq(ts.toString, value)).right.toOption
       .flatMap {
-        case NumberValue(v) => Some(v)
+        case v: Float => Some(v)
         case _ => None
       }
 
