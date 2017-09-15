@@ -121,8 +121,8 @@ class TopologyTest extends FlatSpec with Matchers {
     val time = LocalDateTime.now
     val input: Seq[(String, String)] = batchInput.map(x => ("", x.toJson.compactPrint))
     val expected = Seq(DataRecord("milesPH", time.plusHours(1), 1.6093f), DataRecord("milesPH", time.plusHours(2), 3.2186f), DataRecord("milesPH", time.plusHours(3), 4.8279f))
-    val m = Map[String, TimeSeries[Float]]("kilometersPH" -> TimeSeries.fromColumns(Seq(time.plusHours(1), time.plusHours(2), time.plusHours(3)), Seq(1, 2, 3))
-      , "kilometersPH2" -> TimeSeries.fromColumns(Seq(time, time.plusMinutes(1), time.plusMinutes(2)), Seq(11, 22, 33)))
+    val m = Map[String, TimeSeries[Float]]("kilometersPH" -> TimeSeries(Vector(time.plusHours(1), time.plusHours(2), time.plusHours(3)), Vector(1, 2, 3))
+      , "kilometersPH2" -> TimeSeries(Vector(time, time.plusMinutes(1), time.plusMinutes(2)), Vector(11, 22, 33)))
     val db = new TestCaseDB(m)
 
     val received = MockedStreams().config(buildConfig)

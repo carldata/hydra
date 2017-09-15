@@ -54,7 +54,7 @@ object Main {
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
     buildRealtimeStream(builder, params.prefix)
-    buildBatchStream(builder, params.prefix,db)
+    buildBatchStream(builder, params.prefix, db)
     buildDataStream(builder, params.prefix)
 
 

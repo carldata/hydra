@@ -1,15 +1,13 @@
 package carldata.hydra
 
 
-import java.util.concurrent.TimeUnit
-
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Batch._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
+import carldata.series.TimeSeries
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
-import carldata.sf.core.TimeSeriesModule.TimeSeriesValue
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -26,9 +24,9 @@ class BatchProcessor {
       case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
         val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), 30.seconds)
 
-        make(script).flatMap(exec => Interpreter(exec).run("main", Seq(TimeSeriesValue(inputTs)))) match {
+        make(script).flatMap(exec => Interpreter(exec).run("main", Seq(inputTs))) match {
           case Right(xs) =>
-            val resultTs = xs.asInstanceOf[TimeSeriesValue].ts
+            val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             val vs = resultTs.values
             val ids = resultTs.index
             ids.zip(vs)
