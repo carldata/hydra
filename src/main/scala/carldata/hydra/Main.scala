@@ -53,7 +53,7 @@ object Main {
     val db = new CassandraDB(ContactPoints(Seq(params.db)).keySpace(params.keyspace))
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix)
+    buildRealtimeStream(builder, params.prefix,db)
     buildBatchStream(builder, params.prefix, db)
     buildDataStream(builder, params.prefix)
 
@@ -75,9 +75,9 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    cs.foreach((_, v) => rtCmdProcessor.process(v))
+    cs.foreach((_, v) => rtCmdProcessor.process(v,db))
   }
 
   /** Batch processing pipeline */

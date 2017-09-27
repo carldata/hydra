@@ -87,11 +87,11 @@ class TopologyTest extends FlatSpec with Matchers {
 
   it should "store computation in the DB" in {
     val input: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
-
+    val db = new TestCaseDB(Map.empty)
     MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildRealtimeStream(builder, "", db)
       }
       .input("hydra-rt", strings, strings, input)
       .output[String, String]("hydra-rt", strings, strings, input.size)
@@ -103,11 +103,11 @@ class TopologyTest extends FlatSpec with Matchers {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
     val expected = Seq(DataRecord("c-out", inputSet5(2).timestamp, 2.0f))
-
+    val db = new TestCaseDB(Map.empty)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildRealtimeStream(builder, "", db)
       }
     streams.input("hydra-rt", strings, strings, cmd)
 

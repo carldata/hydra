@@ -20,12 +20,12 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String): Unit = {
+  def process(jsonStr: String, db: TimeSeriesDB): Unit = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
         make(script)
-          .map { ast => Interpreter(ast) }
+          .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             val comp = Computation(calculationId, trigger, exec, outputChannel)
             computationDB.add(comp)

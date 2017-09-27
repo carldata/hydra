@@ -105,6 +105,7 @@ class Testcases extends WordSpec with Matchers {
     val computationSet = Seq(
       RealTimeRecord(AddAction, s.trigger + s.output, s.code, s.trigger, s.output)
     )
+    val db = new TestCaseDB(Map.empty)
     val strings: Serde[String] = Serdes.String()
     val cmd: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = s.records.map(x => ("", x.toJson.compactPrint))
@@ -112,7 +113,7 @@ class Testcases extends WordSpec with Matchers {
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder)
+        Main.buildRealtimeStream(builder, "", db)
       }
 
     streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)
