@@ -10,7 +10,7 @@ libraryDependencies ++= Seq(
   "com.outworkers" %% "phantom-dsl" % "2.12.1" exclude("org.slf4j","log4j-over-slf4j"),
   "io.spray" %% "spray-json" % "1.3.3" ,
   "io.github.carldata" %% "hydra-streams" % "0.4.0",
-  "io.github.carldata" %% "flow-script" % "0.7.4",
+  "io.github.carldata" %% "flow-script" % "0.7.7",
   "com.outworkers" %%  "phantom-dsl" % "2.12.1",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % Runtime,
 
