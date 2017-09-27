@@ -1,19 +1,36 @@
 package carldata.hydra
 
 import java.time._
+import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 import java.time.temporal.ChronoField
 
 import carldata.series.TimeSeries
+import carldata.sf.core.DBImplementation
 import com.outworkers.phantom.dsl._
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
 
-import scala.concurrent.Future
+import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
 
 case class DataEntity(channel: String, timestamp: String, value: Float)
 
-trait TimeSeriesDB {
+case class LookupEntity(id: String, x: Float, y: Float)
+
+trait TimeSeriesDB extends DBImplementation {
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] //Future[List[DataEntity]]
 
+}
+
+abstract class Lookup_Table extends Table[Lookup_Table, LookupEntity] {
+
+  object id extends StringColumn with PartitionKey
+
+  object x extends FloatColumn
+
+  object y extends FloatColumn
+
+  def getTable(id: String): Future[List[LookupEntity]] = {
+    select.where(_.id eqs id).fetch
+  }
 }
 
 abstract class Data extends Table[Data, DataEntity] {
@@ -40,7 +57,6 @@ abstract class Data extends Table[Data, DataEntity] {
   }
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
-    println(name + "\t <=last!")
     select.where(_.channel eqs name)
       .orderBy(_.timestamp desc)
       .one() map {
@@ -81,7 +97,13 @@ class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraD
 
   object data extends Data with keyspace.Connector
 
+  object lookup_table extends Lookup_Table with keyspace.Connector
+
   override def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = data.getSeries(name, from, to)
+
+  def getTable(id: String): IndexedSeq[(Float, Float)] = {
+    Await.result(lookup_table.getTable(id), 30.seconds).map(x => (x.x, x.y)).toIndexedSeq
+  }
 
 }
 
@@ -89,6 +111,14 @@ class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
     Future(ts.get(name).get.slice(from, to))
+  }
+
+  val lookup_table = Seq(("velocity", 1f, 100f)
+    , ("velocity", 3f, 200f)
+    , ("velocity", 5f, 400f))
+
+  def getTable(id: String): IndexedSeq[(Float, Float)] = {
+    lookup_table.filter(p => p._1.equals(id)).map(x => (x._2, x._3)).toIndexedSeq
   }
 
 
