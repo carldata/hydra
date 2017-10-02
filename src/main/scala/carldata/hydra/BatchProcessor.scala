@@ -18,12 +18,12 @@ import scala.concurrent.duration._
 class BatchProcessor {
 
   private val Log = LoggerFactory.getLogger("Hydra")
+
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
-      case Some(BatchRecord(calculationId, script, inputChannelId, outputChannelId, startDate, endDate)) => {
-        val inputTs = Await.result(db.getSeries(inputChannelId, startDate, endDate), 30.seconds)
-
-        make(script).flatMap(exec => Interpreter(exec,db).run("main", Seq(inputTs))) match {
+      case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) => {
+        val inputTs = inputChannelIds.map(id => Await.result(db.getSeries(id, startDate, endDate), 30.seconds))
+        make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             val vs = resultTs.values
