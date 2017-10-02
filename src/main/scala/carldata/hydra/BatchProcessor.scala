@@ -12,8 +12,10 @@ import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
-import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
+import scala.concurrent.{Await, Future}
+
 
 class BatchProcessor {
 
@@ -22,7 +24,8 @@ class BatchProcessor {
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) => {
-        val inputTs = inputChannelIds.map(id => Await.result(db.getSeries(id, startDate, endDate), 30.seconds))
+        val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
+        val inputTs = Await.result(Future.sequence(futures), 30.seconds)
         make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
