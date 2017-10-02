@@ -124,7 +124,7 @@ class Testcases extends WordSpec with Matchers {
 
   def checkExecuteBatch(s: ScriptBatchTest): Unit = {
     val computationSet = Seq(
-      BatchRecord(s.input + s.output, s.code, s.input, s.output, LocalDateTime.parse(s.startDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME), LocalDateTime.parse(s.endDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME))
+      BatchRecord(s.input + s.output, s.code, Seq(s.input), s.output, LocalDateTime.parse(s.startDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME), LocalDateTime.parse(s.endDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME))
     )
     val strings: Serde[String] = Serdes.String()
     val batch: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint)).toVector

@@ -40,7 +40,7 @@ object TopologyTest {
   )
 
   val batchInput = Seq(
-    BatchRecord("6d696c6573", mphCode, "kilometersPH", "milesPH", LocalDateTime.now, LocalDateTime.now.plusDays(5))
+    BatchRecord("6d696c6573", mphCode, Seq("kilometersPH"), "milesPH", LocalDateTime.now, LocalDateTime.now.plusDays(5))
   )
 
   val inputSet5 = Seq(
