@@ -1,8 +1,6 @@
 package carldata.hydra
 
 import java.time._
-import java.time.format.{DateTimeFormatter, DateTimeFormatterBuilder}
-import java.time.temporal.ChronoField
 
 import carldata.series.TimeSeries
 import carldata.sf.core.DBImplementation
@@ -11,7 +9,7 @@ import com.outworkers.phantom.dsl._
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
-case class DataEntity(channel: String, timestamp: String, value: Float)
+case class DataEntity(channel: String, timestamp: DateTime, value: Float)
 
 case class LookupEntity(id: String, x: Float, y: Float)
 
@@ -37,7 +35,7 @@ abstract class Data extends Table[Data, DataEntity] {
 
   object channel extends StringColumn with PartitionKey
 
-  object timestamp extends StringColumn with PrimaryKey with ClusteringOrder with Descending
+  object timestamp extends DateTimeColumn with PrimaryKey with ClusteringOrder with Descending
 
   object value extends FloatColumn
 
@@ -47,11 +45,11 @@ abstract class Data extends Table[Data, DataEntity] {
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
     select.where(_.channel eqs name)
-      .and(_.timestamp gte convert(from))
-      .and(_.timestamp lte convert(to))
+      .and(_.timestamp gte toDateTime(from))
+      .and(_.timestamp lte toDateTime(to))
       .fetch
       .map(x => new TimeSeries(x.map { y => {
-        (dateParse(y.timestamp), y.value)
+        (fromDateTime(y.timestamp), y.value)
       }
       }))
   }
@@ -60,36 +58,20 @@ abstract class Data extends Table[Data, DataEntity] {
     select.where(_.channel eqs name)
       .orderBy(_.timestamp desc)
       .one() map {
-      x => x.map(c => (dateParse(c.timestamp), c.value))
+      x => x.map(c => (fromDateTime(c.timestamp), c.value))
     }
   }
 
-  def dateParse(str: String): LocalDateTime = {
-    val formatter = new DateTimeFormatterBuilder()
-      .parseCaseInsensitive
-      .appendValue(ChronoField.YEAR)
-      .appendLiteral('-')
-      .appendValue(ChronoField.MONTH_OF_YEAR)
-      .appendLiteral('-')
-      .appendValue(ChronoField.DAY_OF_MONTH)
-      .optionalStart.appendLiteral(' ').optionalEnd
-      .optionalStart.appendLiteral('T').optionalEnd
-      .optionalStart
-      .appendValue(ChronoField.HOUR_OF_DAY)
-      .appendLiteral(':')
-      .appendValue(ChronoField.MINUTE_OF_HOUR)
-      .optionalStart.appendLiteral(':').appendValue(ChronoField.SECOND_OF_MINUTE).optionalEnd
-      .optionalEnd
-      .parseDefaulting(ChronoField.HOUR_OF_DAY, 0)
-      .parseDefaulting(ChronoField.MINUTE_OF_HOUR, 0)
-      .parseDefaulting(ChronoField.SECOND_OF_MINUTE, 0)
-      .toFormatter
-
-    LocalDateTime.parse(str, formatter)
+  def fromDateTime(dt: DateTime): LocalDateTime = {
+    LocalDateTime.of(dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth, dt.getHourOfDay, dt.getMinuteOfHour)
+      .withSecond(dt.getSecondOfMinute)
+      .withNano((dt.getMillis / 1000000).toInt)
   }
 
-  def convert(time: LocalDateTime): String = {
-    time.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)
+  def toDateTime(dt: LocalDateTime): org.joda.time.DateTime = {
+    new DateTime(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, dt.getHour, dt.getMinute)
+      .plusSeconds(dt.getSecond)
+      .plusMillis(dt.getNano * 1000000)
   }
 }
 
