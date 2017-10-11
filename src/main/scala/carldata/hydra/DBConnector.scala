@@ -44,7 +44,7 @@ abstract class Data extends Table[Data, DataEntity] {
   }
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
-    val x=select.where(_.channel eqs name)
+    select.where(_.channel eqs name)
       .and(_.timestamp gte toDateTime(from))
       .and(_.timestamp lte toDateTime(to))
       .fetch
@@ -52,9 +52,6 @@ abstract class Data extends Table[Data, DataEntity] {
         (fromDateTime(y.timestamp), y.value)
       }
       }))
-    x.map(ss=> logger.debug("result"+ss))
-
-    x
   }
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
