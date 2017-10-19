@@ -3,6 +3,7 @@ package carldata.hydra
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
+import com.datastax.driver.core.PlainTextAuthProvider
 import com.outworkers.phantom.connectors.ContactPoints
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
@@ -26,15 +27,17 @@ object Main {
   val dataProcessor = new DataProcessor(computationsDB)
   val batchProcessor = new BatchProcessor()
 
-  case class Params(kafkaBroker: String, prefix: String, db: String, keyspace: String)
+  case class Params(kafkaBroker: String, prefix: String, db: String, keyspace: String, user: String, pass: String)
 
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
     val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
     val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
     val db = args.find(_.contains("--db=")).map(_.substring(5)).getOrElse("localhost")
+    val user = args.find(_.contains("--user=")).map(_.substring(7)).getOrElse("")
+    val pass = args.find(_.contains("--pass=")).map(_.substring(7)).getOrElse("")
     val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default")
-    Params(kafka, prefix, db, keyspace)
+    Params(kafka, prefix, db, keyspace, user, pass)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -50,10 +53,18 @@ object Main {
     val params = parseArgs(args)
     Log.info("Hydra started: " + params)
     val config = buildConfig(params)
-    val db = new CassandraDB(ContactPoints(Seq(params.db)).keySpace(params.keyspace))
+
+    val db = if (params.user == "" || params.pass == "") {
+      new CassandraDB(ContactPoints(Seq(params.db)).keySpace(params.keyspace))
+    } else {
+      new CassandraDB(ContactPoints(Seq(params.db))
+        .withClusterBuilder(_.withAuthProvider(new PlainTextAuthProvider(params.user, params.pass)))
+        .keySpace(params.keyspace))
+    }
+
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix,db)
+    buildRealtimeStream(builder, params.prefix, db)
     buildBatchStream(builder, params.prefix, db)
     buildDataStream(builder, params.prefix)
 
@@ -77,7 +88,7 @@ object Main {
   /** Data topic processing pipeline */
   def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    cs.foreach((_, v) => rtCmdProcessor.process(v,db))
+    cs.foreach((_, v) => rtCmdProcessor.process(v, db))
   }
 
   /** Batch processing pipeline */
