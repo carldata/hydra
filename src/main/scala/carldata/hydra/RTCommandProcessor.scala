@@ -1,7 +1,7 @@
 package carldata.hydra
 
 import carldata.hs.RealTime.RealTimeJsonProtocol._
-import carldata.hs.RealTime.{AddAction, RealTimeRecord, RemoveAction}
+import carldata.hs.RealTime.{AddAction, RealTimeJobRecord, RemoveAction}
 import carldata.hydra.ComputationDB.Computation
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
@@ -23,15 +23,17 @@ class RTCommandProcessor(computationDB: ComputationDB) {
   def process(jsonStr: String, db: TimeSeriesDB): Unit = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
-      case Some(RealTimeRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
+      case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
-            val comp = Computation(calculationId, trigger, exec, outputChannel)
-            computationDB.add(comp)
+            trigger.foreach { t =>
+              val comp = Computation(calculationId, t, exec, outputChannel)
+              computationDB.add(comp)
+            }
           }
 
-      case Some(RealTimeRecord(RemoveAction, calculationId, _, _, _)) =>
+      case Some(RealTimeJobRecord(RemoveAction, calculationId, _, _, _)) =>
         computationDB.remove(calculationId)
       case _ =>
     }
@@ -39,9 +41,9 @@ class RTCommandProcessor(computationDB: ComputationDB) {
   }
 
   /** Convert from json with exception handling */
-  def deserialize(rec: String): Option[RealTimeRecord] = {
+  def deserialize(rec: String): Option[RealTimeJobRecord] = {
     try {
-      Some(JsonParser(rec).convertTo[RealTimeRecord])
+      Some(JsonParser(rec).convertTo[RealTimeJobRecord])
     } catch {
       case _: ParsingException => None
     }
