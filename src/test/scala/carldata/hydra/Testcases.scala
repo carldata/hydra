@@ -1,8 +1,8 @@
 package carldata.hydra
 
 import java.io.File
+import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
-import java.time.{Instant, LocalDateTime, ZoneId}
 import java.util.Properties
 
 import carldata.hs.Batch.BatchRecord
@@ -10,7 +10,7 @@ import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.RealTimeJsonProtocol._
-import carldata.hs.RealTime.{AddAction, RealTimeRecord}
+import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
@@ -103,7 +103,7 @@ class Testcases extends WordSpec with Matchers {
 
   def checkExecuteRT(s: ScriptRTTest): Unit = {
     val computationSet = Seq(
-      RealTimeRecord(AddAction, s.trigger + s.output, s.code, s.trigger, s.output)
+      RealTimeJobRecord(AddAction, s.trigger + s.output, s.code, Seq(s.trigger), s.output)
     )
     val db = new TestCaseDB(Map.empty)
     val strings: Serde[String] = Serdes.String()

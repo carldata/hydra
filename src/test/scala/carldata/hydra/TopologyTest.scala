@@ -8,7 +8,7 @@ import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.RealTimeJsonProtocol._
-import carldata.hs.RealTime.{AddAction, RealTimeRecord}
+import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
@@ -32,7 +32,7 @@ object TopologyTest {
     """.stripMargin
 
   val computationSet1 = Seq(
-    RealTimeRecord(AddAction, "calc1", code, "c3", "c-out")
+    RealTimeJobRecord(AddAction, "calc1", code, Seq("c3"), "c-out")
   )
 
   val inputSet1 = Seq(
