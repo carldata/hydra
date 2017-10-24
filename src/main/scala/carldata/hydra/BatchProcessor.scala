@@ -19,7 +19,7 @@ import scala.concurrent.{Await, Future}
 
 class BatchProcessor {
 
-  private val Log = LoggerFactory.getLogger("Hydra")
+  private val Log = LoggerFactory.getLogger(this.getClass)
 
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
