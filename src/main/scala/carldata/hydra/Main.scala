@@ -19,7 +19,7 @@ import scala.collection.JavaConverters._
   */
 object Main {
 
-  private val Log = LoggerFactory.getLogger("Hydra")
+  private val Log = LoggerFactory.getLogger(Main.getClass)
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()

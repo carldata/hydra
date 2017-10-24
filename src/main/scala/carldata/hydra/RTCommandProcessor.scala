@@ -14,7 +14,7 @@ import spray.json._
   */
 class RTCommandProcessor(computationDB: ComputationDB) {
 
-  private val Log = LoggerFactory.getLogger("Hydra")
+  private val Log = LoggerFactory.getLogger(this.getClass)
 
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.

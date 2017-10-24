@@ -12,6 +12,8 @@ libraryDependencies ++= Seq(
   "io.github.carldata" %% "hydra-streams" % "0.4.4",
   "io.github.carldata" %% "flow-script" % "0.7.8",
   "com.outworkers" %%  "phantom-dsl" % "2.12.1",
+  "org.slf4j" % "slf4j-api" % "1.7.25",
+  "de.siegmar" % "logback-gelf" % "1.0.4",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % Runtime,
 
   // Test dependencies
