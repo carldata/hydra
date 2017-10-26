@@ -34,9 +34,9 @@ object Main {
     val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
     val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
     val db = args.find(_.contains("--db=")).map(_.substring(5)).getOrElse("localhost").split(",").toSeq
-    val user = args.find(_.contains("--user=")).map(_.substring(7)).getOrElse("")
-    val pass = args.find(_.contains("--pass=")).map(_.substring(7)).getOrElse("")
-    val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default")
+    val user = args.find(_.contains("--user=")).map(_.substring(7)).getOrElse("").trim
+    val pass = args.find(_.contains("--pass=")).map(_.substring(7)).getOrElse("").trim
+    val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default").trim
     Params(kafka, prefix, db, keyspace, user, pass)
   }
 
@@ -51,7 +51,7 @@ object Main {
 
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
-    Log.info("Hydra started")
+    Log.info("Hydra started ")
     val config = buildConfig(params)
     val db = initDB(params)
 
