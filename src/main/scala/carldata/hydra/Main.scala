@@ -53,14 +53,7 @@ object Main {
     val params = parseArgs(args)
     Log.info("Hydra started")
     val config = buildConfig(params)
-
-    val db = if (params.user == "" || params.pass == "") {
-      new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
-    } else {
-      new CassandraDB(ContactPoints(params.db)
-        .withClusterBuilder(_.withAuthProvider(new PlainTextAuthProvider(params.user, params.pass)))
-        .keySpace(params.keyspace))
-    }
+    val db = initDB(params)
 
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
@@ -98,6 +91,17 @@ object Main {
     val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
     dsOut.to(prefix + "data")
   }
+
+  def initDB(params: Params) : CassandraDB = {
+    if (params.user == "" || params.pass == "") {
+      new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
+    } else {
+      new CassandraDB(ContactPoints(params.db)
+        .withClusterBuilder(_.withAuthProvider(new PlainTextAuthProvider(params.user, params.pass)))
+        .keySpace(params.keyspace))
+    }
+  }
+
 }
 
 
