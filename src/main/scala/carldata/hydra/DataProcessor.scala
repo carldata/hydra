@@ -5,6 +5,7 @@ import java.time.LocalDateTime
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data._
 import carldata.sf.Interpreter
+import com.timgroup.statsd.StatsDClient
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
@@ -17,13 +18,15 @@ class DataProcessor(computationDB: ComputationDB) {
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String): Seq[String] = {
+  def process(jsonStr: String, statsDClient: Option[StatsDClient]): Seq[String] = {
     val input = deserialize(jsonStr)
-    computationDB.findByChannel(input.channelId)
+    val output = computationDB.findByChannel(input.channelId)
       .map(e => (e.destChannelId, execute(e.script, input.timestamp, input.value)))
       .map(x => x._2.map(y => DataRecord(x._1, input.timestamp, y)))
       .flatMap(_.toList)
       .map(serialize)
+    statsDClient.foreach(sdc => output.foreach(_ => sdc.incrementCounter("data_processor.processed")))
+    output
   }
 
   /** Convert from json with exception handling */

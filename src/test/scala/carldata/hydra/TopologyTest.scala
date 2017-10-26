@@ -78,7 +78,7 @@ class TopologyTest extends FlatSpec with Matchers {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
 
     val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildDataStream(builder))
+      .topology(builder => Main.buildDataStream(builder,"",None))
       .input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, 1)
 
@@ -90,8 +90,8 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(Map.empty)
     MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder, "", db)
+        Main.buildDataStream(builder,"",None)
+        Main.buildRealtimeStream(builder, "", db,None)
       }
       .input("hydra-rt", strings, strings, input)
       .output[String, String]("hydra-rt", strings, strings, input.size)
@@ -106,8 +106,8 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(Map.empty)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder, "", db)
+        Main.buildDataStream(builder,"",None)
+        Main.buildRealtimeStream(builder, "", db,None)
       }
     streams.input("hydra-rt", strings, strings, cmd)
 
@@ -126,7 +126,7 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(m)
 
     val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildBatchStream(builder, "", db))
+      .topology(builder => Main.buildBatchStream(builder, "", db,None))
       .input("hydra-batch", strings, strings, input)
       .output[String, String]("data", strings, strings, expected.size)
 

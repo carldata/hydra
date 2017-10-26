@@ -15,6 +15,7 @@ libraryDependencies ++= Seq(
   "org.slf4j" % "slf4j-api" % "1.7.25",
   "de.siegmar" % "logback-gelf" % "1.0.4",
   "ch.qos.logback" % "logback-classic" % "1.2.3" % Runtime,
+  "com.datadoghq" % "java-dogstatsd-client" % "2.3",
 
   // Test dependencies
   "com.madewithtea" %% "mockedstreams" % "1.3.0" % Test,
