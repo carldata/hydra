@@ -38,10 +38,9 @@ class Testcases extends WordSpec with Matchers {
 
   case class ScriptBatchTest(name: String, code: String, input: String, output: String, startDate: String, endDate: String, records: Seq[DataRecord], expected: Seq[DataRecord])
 
-  val statsDCClient = StatSDWrapper
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB, statsDCClient)
-  val dataProcessor = new DataProcessor(computationsDB, statsDCClient)
-  val batchProcessor = new BatchProcessor(statsDCClient)
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+  val dataProcessor = new DataProcessor(computationsDB)
+  val batchProcessor = new BatchProcessor()
 
   "Testcases runner" should {
 

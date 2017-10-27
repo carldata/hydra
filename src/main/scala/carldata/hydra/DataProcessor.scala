@@ -11,7 +11,7 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class DataProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) {
+class DataProcessor(computationDB: ComputationDB) {
 
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
@@ -24,7 +24,6 @@ class DataProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) {
       .map(x => x._2.map(y => DataRecord(x._1, input.timestamp, y)))
       .flatMap(_.toList)
       .map(serialize)
-    sdc.increment("data_processor.processed", output.size)
     output
   }
 

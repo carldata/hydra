@@ -40,7 +40,19 @@ bin/kafka-console-consumer.sh --bootstrap-server localhost:9092 --topic data
 
 Use [Theia](https://github.com/carldata/theia) as a data generator.
 
- 
+
+### Datadog metric type
+
+`hydra.batch.count` number of processed batch events
+`hydra.batch.in.count` number of collected records  by batch processing
+`hydra.batch.out.count` number of generated records by batch processing
+`hydra.batch.rate` rate for batch processing
+`hydra.batch.errors.parser` number of records failed to deserialize batch processing
+`hydra.rt.count` number of processed real-time events
+`hydra.rt.out.count` number of generated records by real-time processing
+`hydra.rt.errors.parser` number of records failed to deserialize by real-time processing
+
+
 # Join in!
 
 We are happy to receive bug reports, fixes, documentation enhancements,

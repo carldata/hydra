@@ -74,10 +74,10 @@ object TopologyTest {
 class TopologyTest extends FlatSpec with Matchers {
 
   import TopologyTest._
-  val statsDCClient = StatSDWrapper
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB, statsDCClient)
-  val dataProcessor = new DataProcessor(computationsDB, statsDCClient)
-  val batchProcessor = new BatchProcessor(statsDCClient)
+
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+  val dataProcessor = new DataProcessor(computationsDB)
+  val batchProcessor = new BatchProcessor()
 
   "StreamProcessing" should "not process event without computation" in {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)

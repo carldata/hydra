@@ -12,7 +12,7 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class RTCommandProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) {
+class RTCommandProcessor(computationDB: ComputationDB) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
 
@@ -24,12 +24,12 @@ class RTCommandProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) 
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        sdc.increment("rt.count")
+        StatSDWrapper.increment("rt.count")
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             trigger.foreach { t =>
-              sdc.increment("rt.out.count")
+              StatSDWrapper.increment("rt.out.count")
               val comp = Computation(calculationId, t, exec, outputChannel)
               computationDB.add(comp)
             }
@@ -48,7 +48,7 @@ class RTCommandProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) 
       Some(JsonParser(rec).convertTo[RealTimeJobRecord])
     } catch {
       case _: ParsingException =>
-        sdc.increment("rt.errors.parser")
+        StatSDWrapper.increment("rt.errors.parser")
         None
     }
   }

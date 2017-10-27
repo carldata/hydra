@@ -23,6 +23,9 @@ object Main {
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+  val dataProcessor = new DataProcessor(computationsDB)
+  val batchProcessor = new BatchProcessor()
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String, statSDHost: String)
 
@@ -57,14 +60,9 @@ object Main {
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
     Log.info("Hydra started ")
-    val statsDCClient = StatSDWrapper
-    statsDCClient.initStatsD("hydra", params.statSDHost)
+    StatSDWrapper.init("hydra", params.statSDHost)
     val config = buildConfig(params)
     val db = initDB(params)
-
-    val rtCmdProcessor = new RTCommandProcessor(computationsDB, statsDCClient)
-    val dataProcessor = new DataProcessor(computationsDB, statsDCClient)
-    val batchProcessor = new BatchProcessor(statsDCClient)
 
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
