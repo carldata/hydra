@@ -5,15 +5,14 @@ import org.slf4j.LoggerFactory
 
 object StatSDWrapper {
   private val Log = LoggerFactory.getLogger(Main.getClass)
-  var client: Option[StatsDClient] = None
+  private var client: Option[StatsDClient] = None
 
-  def initStatsD(app: String, host: String): Option[StatsDClient] = {
+  def init(app: String, host: String): Unit = {
     try {
-      Some(new NonBlockingStatsDClient(app, host, 8125))
+      client = Some(new NonBlockingStatsDClient(app, host, 8125))
     }
     catch {
       case e: Exception => Log.warn(e.getMessage)
-        None
     }
   }
 
