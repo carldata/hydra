@@ -12,20 +12,21 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class DataProcessor(computationDB: ComputationDB) {
+class DataProcessor(computationDB: ComputationDB, statsDClient: Option[StatsDClient]) {
 
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String, statsDClient: Option[StatsDClient]): Seq[String] = {
+  val sdc = new StatSDWrapper(statsDClient)
+  def process(jsonStr: String): Seq[String] = {
     val input = deserialize(jsonStr)
     val output = computationDB.findByChannel(input.channelId)
       .map(e => (e.destChannelId, execute(e.script, input.timestamp, input.value)))
       .map(x => x._2.map(y => DataRecord(x._1, input.timestamp, y)))
       .flatMap(_.toList)
       .map(serialize)
-    statsDClient.foreach(sdc => output.foreach(_ => sdc.incrementCounter("data_processor.processed")))
+    sdc.increment("data_processor.processed", output.size)
     output
   }
 

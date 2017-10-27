@@ -13,24 +13,24 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class RTCommandProcessor(computationDB: ComputationDB) {
+class RTCommandProcessor(computationDB: ComputationDB, statsDClient: Option[StatsDClient]) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
-
+  private val sdc = new StatSDWrapper(statsDClient)
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String, db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Unit = {
+  def process(jsonStr: String, db: TimeSeriesDB): Unit = {
     Log.info(jsonStr)
-    deserialize(jsonStr, statsDClient) match {
+    deserialize(jsonStr) match {
       case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        statsDClient.foreach(_.incrementCounter("rt.count"))
+        sdc.increment("rt.count")
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             trigger.foreach { t =>
-              statsDClient.foreach(_.incrementCounter("rt.out.count"))
+              sdc.increment("rt.out.count")
               val comp = Computation(calculationId, t, exec, outputChannel)
               computationDB.add(comp)
             }
@@ -44,12 +44,12 @@ class RTCommandProcessor(computationDB: ComputationDB) {
   }
 
   /** Convert from json with exception handling */
-  def deserialize(rec: String, statsDClient: Option[StatsDClient]): Option[RealTimeJobRecord] = {
+  def deserialize(rec: String): Option[RealTimeJobRecord] = {
     try {
       Some(JsonParser(rec).convertTo[RealTimeJobRecord])
     } catch {
       case _: ParsingException =>
-        statsDClient.foreach(_.incrementCounter("rt.errors.parser"))
+        sdc.increment("rt.errors.parser")
         None
     }
   }

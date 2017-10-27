@@ -24,9 +24,6 @@ object Main {
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
-  val dataProcessor = new DataProcessor(computationsDB)
-  val batchProcessor = new BatchProcessor()
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String, statSDHost: String)
 
@@ -68,11 +65,15 @@ object Main {
     val config = buildConfig(params)
     val db = initDB(params)
 
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, statsDCClient)
+    val dataProcessor = new DataProcessor(computationsDB, statsDCClient)
+    val batchProcessor = new BatchProcessor(statsDCClient)
+
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix, db, statsDCClient)
-    buildBatchStream(builder, params.prefix, db, statsDCClient)
-    buildDataStream(builder, params.prefix, statsDCClient)
+    buildRealtimeStream(builder, params.prefix, db, rtCmdProcessor)
+    buildBatchStream(builder, params.prefix, db, batchProcessor)
+    buildDataStream(builder, params.prefix, dataProcessor)
 
 
     // Start topology
@@ -85,23 +86,23 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildDataStream(builder: KStreamBuilder, prefix: String = "", statsDClient: Option[StatsDClient]): Unit = {
+  def buildDataStream(builder: KStreamBuilder, prefix: String = "", dataProcessor: DataProcessor): Unit = {
     val ds: KStream[String, String] = builder.stream(prefix + "data")
-    val dsOut: KStream[String, String] = ds.flatMapValues(x => dataProcessor.process(x, statsDClient).asJava)
+    val dsOut: KStream[String, String] = ds.flatMapValues(x => dataProcessor.process(x).asJava)
     dsOut.to(prefix + "data")
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    cs.foreach((_, v) => rtCmdProcessor.process(v, db, statsDClient))
+    cs.foreach((_, v) => rtCmdProcessor.process(v, db))
   }
 
   /** Batch processing pipeline */
-  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Unit = {
+  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB, batchProcessor: BatchProcessor): Unit = {
 
     val ds: KStream[String, String] = builder.stream(prefix + "hydra-batch")
-    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db, statsDClient).asJava)
+    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
     dsOut.to(prefix + "data")
   }
 

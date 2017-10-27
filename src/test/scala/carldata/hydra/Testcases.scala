@@ -11,6 +11,7 @@ import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.RealTimeJsonProtocol._
 import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
+import carldata.hydra.Main.computationsDB
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
@@ -37,7 +38,13 @@ class Testcases extends WordSpec with Matchers {
 
   case class ScriptBatchTest(name: String, code: String, input: String, output: String, startDate: String, endDate: String, records: Seq[DataRecord], expected: Seq[DataRecord])
 
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB, None)
+  val dataProcessor = new DataProcessor(computationsDB, None)
+  val batchProcessor = new BatchProcessor(None)
+
   "Testcases runner" should {
+
+
     "run all tests in folder: testcases" in {
       val filesList: Seq[TestCaseFile] = listFiles("testcases")
       filesList.map {
@@ -112,8 +119,8 @@ class Testcases extends WordSpec with Matchers {
 
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder,"",None)
-        Main.buildRealtimeStream(builder, "", db,None)
+        Main.buildDataStream(builder, "", dataProcessor)
+        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
       }
 
     streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)
@@ -134,8 +141,8 @@ class Testcases extends WordSpec with Matchers {
     val db = new TestCaseDB(Map((s.input -> ts)))
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder,"",None)
-        Main.buildBatchStream(builder, "", db,None)
+        Main.buildDataStream(builder, "", dataProcessor)
+        Main.buildBatchStream(builder, "", db, batchProcessor)
       }
 
     streams.input("hydra-batch", strings, strings, batch)

@@ -18,24 +18,25 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 
-class BatchProcessor {
+class BatchProcessor(statsDClient: Option[StatsDClient]) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
+  private val sdc = new StatSDWrapper(statsDClient)
 
-  def process(jsonStr: String, db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Seq[String] = {
-    deserialize(jsonStr, statsDClient) match {
+  def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
+    deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) => {
-        statsDClient.foreach(_.incrementCounter("batch.count"))
+        sdc.increment("batch.count")
         val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
-        statsDClient.foreach(sdc => inputTs.foreach(_ => sdc.incrementCounter("batch.in.count")))
+        sdc.increment("batch.in.count", inputTs.size)
         make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             val vs = resultTs.values
             val ids = resultTs.index
-            statsDClient.foreach(sdc => ids.foreach(_ => sdc.incrementCounter("batch.out.count")))
-            statsDClient.foreach(_.recordGaugeValue("batch.rate", ids.size / inputTs.size))
+            sdc.increment("batch.out.count", ids.size)
+            sdc.gauge("batch.rate", ids.size / inputTs.size)
             ids.zip(vs)
               .map(x => DataRecord(outputChannelId, x._1, x._2))
               .map(serialize)
@@ -49,12 +50,12 @@ class BatchProcessor {
   }
 
   /** Convert from json with exception handling */
-  def deserialize(rec: String, statsDClient: Option[StatsDClient]): Option[BatchRecord] = {
+  def deserialize(rec: String): Option[BatchRecord] = {
     try {
       Some(JsonParser(rec).convertTo[BatchRecord])
     } catch {
       case _: ParsingException =>
-        statsDClient.foreach(_.incrementCounter("batch.errors.parser"))
+        sdc.increment("batch.errors.parser")
         None
     }
   }
