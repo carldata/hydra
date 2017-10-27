@@ -1,5 +1,6 @@
 package carldata.hydra
 
+import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
@@ -27,15 +28,21 @@ object Main {
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String, statSDHost: String)
 
+  def stringArg(args: Array[String], key: String, default: String): String = {
+    val name = "--" + key + "="
+    args.find(_.contains(name)).map(_.substring(name.length)).getOrElse(default).trim
+  }
+
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
-    val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
-    val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
-    val db = args.find(_.contains("--db=")).map(_.substring(5)).getOrElse("localhost").split(",").toSeq
-    val user = args.find(_.contains("--user=")).map(_.substring(7)).getOrElse("").trim
-    val pass = args.find(_.contains("--pass=")).map(_.substring(7)).getOrElse("").trim
-    val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default").trim
-    val statSDHost = args.find(_.contains("--statSDHost=")).map(_.substring(13)).getOrElse("none").trim
+    val kafka = stringArg(args, "kafka", "localhost:9092")
+    val prefix = stringArg(args, "prefix", "")
+    val db = stringArg(args, "db", "localhost").split(",")
+    val user = stringArg(args, "user", "")
+    val pass = stringArg(args, "pass", "")
+    val keyspace = stringArg(args, "keyspace", "")
+    val statSDHost = stringArg(args, "statSDHost", "none")
+
     Params(kafka, prefix, db, keyspace, user, pass, statSDHost)
   }
 
@@ -106,7 +113,7 @@ object Main {
     dsOut.to(prefix + "data")
   }
 
-  def initDB(params: Params) : CassandraDB = {
+  def initDB(params: Params): CassandraDB = {
     if (params.user == "" || params.pass == "") {
       new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
     } else {
