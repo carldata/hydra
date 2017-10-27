@@ -21,7 +21,7 @@ Prepare Kafka. This should be run only once
 ```bash
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic data
 bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic hydra-rt
-bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic theia
+bin/kafka-topics.sh --create --zookeeper localhost:2181 --replication-factor 1 --partitions 1 --topic hydra-batch
 bin/kafka-topics.sh --zookeeper localhost:2181 --list
 ```
 
