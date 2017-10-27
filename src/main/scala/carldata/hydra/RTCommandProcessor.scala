@@ -25,13 +25,14 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
+        statsDClient.foreach(_.incrementCounter("rt.processed"))
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             trigger.foreach { t =>
+              statsDClient.foreach(_.incrementCounter("rt_data.processed"))
               val comp = Computation(calculationId, t, exec, outputChannel)
               computationDB.add(comp)
-
             }
           }
 

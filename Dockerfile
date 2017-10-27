@@ -6,6 +6,7 @@ ENV Cassandra_Address localhost
 ENV Cassandra_Keyspace default
 ENV Cassandra_Password default
 ENV Cassandra_Username default
+ENV StatSD_Host localhost
 
 WORKDIR /root
 ADD target/scala-2.12/hydra.jar /root/hydra.jar

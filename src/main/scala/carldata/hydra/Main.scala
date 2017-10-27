@@ -53,7 +53,7 @@ object Main {
 
   def initStatsD(host: String): Option[StatsDClient] = {
     try {
-      Some(new NonBlockingStatsDClient("theia", host, 8125))
+      Some(new NonBlockingStatsDClient("hydra", host, 8125))
     }
     catch {
       case e: Exception => Log.warn(e.getMessage)
@@ -101,7 +101,7 @@ object Main {
   def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Unit = {
 
     val ds: KStream[String, String] = builder.stream(prefix + "hydra-batch")
-    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
+    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db, statsDClient).asJava)
     dsOut.to(prefix + "data")
   }
 
