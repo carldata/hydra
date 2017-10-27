@@ -1,12 +1,10 @@
 package carldata.hydra
 
-import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
 import com.datastax.driver.core.PlainTextAuthProvider
 import com.outworkers.phantom.connectors.ContactPoints
-import com.timgroup.statsd.{NonBlockingStatsDClient, StatsDClient}
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.{KafkaStreams, _}
@@ -55,20 +53,12 @@ object Main {
     p
   }
 
-  def initStatsD(host: String): Option[StatsDClient] = {
-    try {
-      Some(new NonBlockingStatsDClient("hydra", host, 8125))
-    }
-    catch {
-      case e: Exception => Log.warn(e.getMessage)
-        None
-    }
-  }
 
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
     Log.info("Hydra started ")
-    val statsDCClient = initStatsD(params.statSDHost)
+    val statsDCClient = StatSDWrapper
+    statsDCClient.initStatsD("hydra", params.statSDHost)
     val config = buildConfig(params)
     val db = initDB(params)
 

@@ -5,20 +5,18 @@ import java.time.LocalDateTime
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data._
 import carldata.sf.Interpreter
-import com.timgroup.statsd.StatsDClient
 import spray.json.JsonParser.ParsingException
 import spray.json._
 
 /**
   * Data processing pipeline
   */
-class DataProcessor(computationDB: ComputationDB, statsDClient: Option[StatsDClient]) {
+class DataProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) {
 
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  val sdc = new StatSDWrapper(statsDClient)
   def process(jsonStr: String): Seq[String] = {
     val input = deserialize(jsonStr)
     val output = computationDB.findByChannel(input.channelId)

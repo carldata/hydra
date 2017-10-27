@@ -5,7 +5,6 @@ import carldata.hs.RealTime.{AddAction, RealTimeJobRecord, RemoveAction}
 import carldata.hydra.ComputationDB.Computation
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
-import com.timgroup.statsd.StatsDClient
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -13,10 +12,10 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class RTCommandProcessor(computationDB: ComputationDB, statsDClient: Option[StatsDClient]) {
+class RTCommandProcessor(computationDB: ComputationDB, sdc: StatSDWrapper.type) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
-  private val sdc = new StatSDWrapper(statsDClient)
+
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel

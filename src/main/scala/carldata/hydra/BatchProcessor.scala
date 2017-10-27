@@ -8,7 +8,6 @@ import carldata.hs.Data.DataRecord
 import carldata.series.TimeSeries
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
-import com.timgroup.statsd.StatsDClient
 import org.slf4j.LoggerFactory
 import spray.json.JsonParser.ParsingException
 import spray.json._
@@ -18,10 +17,9 @@ import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
 
 
-class BatchProcessor(statsDClient: Option[StatsDClient]) {
+class BatchProcessor(sdc: StatSDWrapper.type) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
-  private val sdc = new StatSDWrapper(statsDClient)
 
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
