@@ -9,6 +9,7 @@ import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.RealTimeJsonProtocol._
 import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
+import carldata.hydra.Main.computationsDB
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
@@ -74,11 +75,15 @@ class TopologyTest extends FlatSpec with Matchers {
 
   import TopologyTest._
 
+  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+  val dataProcessor = new DataProcessor(computationsDB)
+  val batchProcessor = new BatchProcessor()
+
   "StreamProcessing" should "not process event without computation" in {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
 
     val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildDataStream(builder))
+      .topology(builder => Main.buildDataStream(builder, "", dataProcessor))
       .input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, 1)
 
@@ -90,8 +95,8 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(Map.empty)
     MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder, "", db)
+        Main.buildDataStream(builder, "", dataProcessor)
+        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
       }
       .input("hydra-rt", strings, strings, input)
       .output[String, String]("hydra-rt", strings, strings, input.size)
@@ -106,8 +111,8 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(Map.empty)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
-        Main.buildDataStream(builder)
-        Main.buildRealtimeStream(builder, "", db)
+        Main.buildDataStream(builder, "", dataProcessor)
+        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
       }
     streams.input("hydra-rt", strings, strings, cmd)
 
@@ -126,7 +131,7 @@ class TopologyTest extends FlatSpec with Matchers {
     val db = new TestCaseDB(m)
 
     val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildBatchStream(builder, "", db))
+      .topology(builder => Main.buildBatchStream(builder, "", db, batchProcessor))
       .input("hydra-batch", strings, strings, input)
       .output[String, String]("data", strings, strings, expected.size)
 

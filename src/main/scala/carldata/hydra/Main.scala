@@ -27,17 +27,24 @@ object Main {
   val dataProcessor = new DataProcessor(computationsDB)
   val batchProcessor = new BatchProcessor()
 
-  case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String)
+  case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String, statSDHost: String)
+
+  def stringArg(args: Array[String], key: String, default: String): String = {
+    val name = "--" + key + "="
+    args.find(_.contains(name)).map(_.substring(name.length)).getOrElse(default).trim
+  }
 
   /** Command line parser */
   def parseArgs(args: Array[String]): Params = {
-    val kafka = args.find(_.contains("--kafka=")).map(_.substring(8)).getOrElse("localhost:9092")
-    val prefix = args.find(_.contains("--prefix=")).map(_.substring(9)).getOrElse("")
-    val db = args.find(_.contains("--db=")).map(_.substring(5)).getOrElse("localhost").split(",").toSeq
-    val user = args.find(_.contains("--user=")).map(_.substring(7)).getOrElse("").trim
-    val pass = args.find(_.contains("--pass=")).map(_.substring(7)).getOrElse("").trim
-    val keyspace = args.find(_.contains("--keyspace=")).map(_.substring(11)).getOrElse("default").trim
-    Params(kafka, prefix, db, keyspace, user, pass)
+    val kafka = stringArg(args, "kafka", "localhost:9092")
+    val prefix = stringArg(args, "prefix", "")
+    val db = stringArg(args, "db", "localhost").split(",")
+    val user = stringArg(args, "user", "")
+    val pass = stringArg(args, "pass", "")
+    val keyspace = stringArg(args, "keyspace", "")
+    val statSDHost = stringArg(args, "statSDHost", "none")
+
+    Params(kafka, prefix, db, keyspace, user, pass, statSDHost)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -49,17 +56,19 @@ object Main {
     p
   }
 
+
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
     Log.info("Hydra started ")
+    StatSDWrapper.init("hydra", params.statSDHost)
     val config = buildConfig(params)
     val db = initDB(params)
 
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix, db)
-    buildBatchStream(builder, params.prefix, db)
-    buildDataStream(builder, params.prefix)
+    buildRealtimeStream(builder, params.prefix, db, rtCmdProcessor)
+    buildBatchStream(builder, params.prefix, db, batchProcessor)
+    buildDataStream(builder, params.prefix, dataProcessor)
 
 
     // Start topology
@@ -72,27 +81,27 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildDataStream(builder: KStreamBuilder, prefix: String = ""): Unit = {
+  def buildDataStream(builder: KStreamBuilder, prefix: String = "", dataProcessor: DataProcessor): Unit = {
     val ds: KStream[String, String] = builder.stream(prefix + "data")
     val dsOut: KStream[String, String] = ds.flatMapValues(x => dataProcessor.process(x).asJava)
     dsOut.to(prefix + "data")
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
     cs.foreach((_, v) => rtCmdProcessor.process(v, db))
   }
 
   /** Batch processing pipeline */
-  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB): Unit = {
+  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB, batchProcessor: BatchProcessor): Unit = {
 
     val ds: KStream[String, String] = builder.stream(prefix + "hydra-batch")
     val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
     dsOut.to(prefix + "data")
   }
 
-  def initDB(params: Params) : CassandraDB = {
+  def initDB(params: Params): CassandraDB = {
     if (params.user == "" || params.pass == "") {
       new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
     } else {

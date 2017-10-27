@@ -19,11 +19,12 @@ class DataProcessor(computationDB: ComputationDB) {
     */
   def process(jsonStr: String): Seq[String] = {
     val input = deserialize(jsonStr)
-    computationDB.findByChannel(input.channelId)
+    val output = computationDB.findByChannel(input.channelId)
       .map(e => (e.destChannelId, execute(e.script, input.timestamp, input.value)))
       .map(x => x._2.map(y => DataRecord(x._1, input.timestamp, y)))
       .flatMap(_.toList)
       .map(serialize)
+    output
   }
 
   /** Convert from json with exception handling */
