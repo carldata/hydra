@@ -23,14 +23,14 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     */
   def process(jsonStr: String, db: TimeSeriesDB, statsDClient: Option[StatsDClient]): Unit = {
     Log.info(jsonStr)
-    deserialize(jsonStr) match {
+    deserialize(jsonStr, statsDClient) match {
       case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        statsDClient.foreach(_.incrementCounter("rt.processed"))
+        statsDClient.foreach(_.incrementCounter("rt.count"))
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             trigger.foreach { t =>
-              statsDClient.foreach(_.incrementCounter("rt_data.processed"))
+              statsDClient.foreach(_.incrementCounter("rt.out.count"))
               val comp = Computation(calculationId, t, exec, outputChannel)
               computationDB.add(comp)
             }
@@ -44,11 +44,13 @@ class RTCommandProcessor(computationDB: ComputationDB) {
   }
 
   /** Convert from json with exception handling */
-  def deserialize(rec: String): Option[RealTimeJobRecord] = {
+  def deserialize(rec: String, statsDClient: Option[StatsDClient]): Option[RealTimeJobRecord] = {
     try {
       Some(JsonParser(rec).convertTo[RealTimeJobRecord])
     } catch {
-      case _: ParsingException => None
+      case _: ParsingException =>
+        statsDClient.foreach(_.incrementCounter("rt.errors.parser"))
+        None
     }
   }
 

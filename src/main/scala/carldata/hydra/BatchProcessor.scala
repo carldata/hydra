@@ -34,8 +34,8 @@ class BatchProcessor {
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             val vs = resultTs.values
             val ids = resultTs.index
-            statsDClient.foreach(sdc => ids.foreach(_ => sdc.incrementCounter("batch.in.count")))
-            statsDClient.foreach(_.gauge("batch.rate", ids.length / inputTs.length))
+            statsDClient.foreach(sdc => ids.foreach(_ => sdc.incrementCounter("batch.out.count")))
+            statsDClient.foreach(_.recordGaugeValue("batch.rate", ids.size / inputTs.size))
             ids.zip(vs)
               .map(x => DataRecord(outputChannelId, x._1, x._2))
               .map(serialize)
@@ -54,7 +54,7 @@ class BatchProcessor {
       Some(JsonParser(rec).convertTo[BatchRecord])
     } catch {
       case _: ParsingException =>
-        statsDClient.foreach(_.incrementCounter("errors.parser"))
+        statsDClient.foreach(_.incrementCounter("batch.errors.parser"))
         None
     }
   }
