@@ -2,7 +2,7 @@ name := "hydra"
 
 version := "0.2.0"
 
-scalaVersion := "2.12.3"
+scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.12.3",

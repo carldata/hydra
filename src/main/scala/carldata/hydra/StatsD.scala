@@ -3,7 +3,7 @@ package carldata.hydra
 import com.timgroup.statsd.{NonBlockingStatsDClient, StatsDClient}
 import org.slf4j.LoggerFactory
 
-object StatSDWrapper {
+object StatsD {
   private val Log = LoggerFactory.getLogger(Main.getClass)
   private var client: Option[StatsDClient] = None
 

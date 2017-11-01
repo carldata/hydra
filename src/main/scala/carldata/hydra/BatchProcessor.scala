@@ -24,17 +24,17 @@ class BatchProcessor() {
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) => {
-        StatSDWrapper.increment("batch.count")
+        StatsD.increment("batch.count")
         val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
-        StatSDWrapper.increment("batch.in.count", inputTs.size)
+        StatsD.increment("batch.in.count", inputTs.size)
         make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             val vs = resultTs.values
             val ids = resultTs.index
-            StatSDWrapper.increment("batch.out.count", ids.size)
-            StatSDWrapper.gauge("batch.rate", ids.size / inputTs.size)
+            StatsD.increment("batch.out.count", ids.size)
+            StatsD.gauge("batch.rate", ids.size / inputTs.size)
             ids.zip(vs)
               .map(x => DataRecord(outputChannelId, x._1, x._2))
               .map(serialize)
@@ -53,7 +53,7 @@ class BatchProcessor() {
       Some(JsonParser(rec).convertTo[BatchRecord])
     } catch {
       case _: ParsingException =>
-        StatSDWrapper.increment("batch.errors.parser")
+        StatsD.increment("batch.errors.parser")
         None
     }
   }

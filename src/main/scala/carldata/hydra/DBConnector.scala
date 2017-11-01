@@ -5,6 +5,7 @@ import java.time._
 import carldata.series.TimeSeries
 import carldata.sf.core.DBImplementation
 import com.outworkers.phantom.dsl._
+import org.joda.time.DateTimeZone
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -14,7 +15,7 @@ case class DataEntity(channel: String, timestamp: DateTime, value: Float)
 case class LookupEntity(id: String, x: Float, y: Float)
 
 trait TimeSeriesDB extends DBImplementation {
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] //Future[List[DataEntity]]
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]]
 
 }
 
@@ -56,7 +57,7 @@ abstract class Data extends Table[Data, DataEntity] {
 
   def getLastValue(name: String): Future[Option[(LocalDateTime, Float)]] = {
     select.where(_.channel eqs name)
-      .orderBy(_.timestamp desc)
+      .orderBy(_.timestamp.desc)
       .one() map {
       x => x.map(c => (fromDateTime(c.timestamp), c.value))
     }
@@ -72,6 +73,7 @@ abstract class Data extends Table[Data, DataEntity] {
     new DateTime(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, dt.getHour, dt.getMinute)
       .plusSeconds(dt.getSecond)
       .plusMillis(dt.getNano * 1000000)
+      .withZone(DateTimeZone.UTC)
   }
 }
 
@@ -92,7 +94,7 @@ class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraD
 class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
 
   def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
-    Future(ts.get(name).get.slice(from, to))
+    Future(ts(name).slice(from, to))
   }
 
   val lookup_table = Seq(("velocity", 1f, 100f)

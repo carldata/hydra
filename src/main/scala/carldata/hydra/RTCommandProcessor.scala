@@ -24,12 +24,12 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(RealTimeJobRecord(AddAction, calculationId, script, trigger, outputChannel)) =>
-        StatSDWrapper.increment("rt.count")
+        StatsD.increment("rt.count")
         make(script)
           .map { ast => Interpreter(ast, db) }
           .foreach { exec =>
             trigger.foreach { t =>
-              StatSDWrapper.increment("rt.out.count")
+              StatsD.increment("rt.out.count")
               val comp = Computation(calculationId, t, exec, outputChannel)
               computationDB.add(comp)
             }
@@ -48,7 +48,7 @@ class RTCommandProcessor(computationDB: ComputationDB) {
       Some(JsonParser(rec).convertTo[RealTimeJobRecord])
     } catch {
       case _: ParsingException =>
-        StatSDWrapper.increment("rt.errors.parser")
+        StatsD.increment("rt.errors.parser")
         None
     }
   }

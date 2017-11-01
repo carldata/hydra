@@ -27,7 +27,8 @@ object Main {
   val dataProcessor = new DataProcessor(computationsDB)
   val batchProcessor = new BatchProcessor()
 
-  case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String, pass: String, statSDHost: String)
+  case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String,
+                    pass: String, statsDHost: String)
 
   def stringArg(args: Array[String], key: String, default: String): String = {
     val name = "--" + key + "="
@@ -42,9 +43,9 @@ object Main {
     val user = stringArg(args, "user", "")
     val pass = stringArg(args, "pass", "")
     val keyspace = stringArg(args, "keyspace", "")
-    val statSDHost = stringArg(args, "statSDHost", "none")
+    val statsDHost = stringArg(args, "statsDHost", "none")
 
-    Params(kafka, prefix, db, keyspace, user, pass, statSDHost)
+    Params(kafka, prefix, db, keyspace, user, pass, statsDHost)
   }
 
   def buildConfig(params: Params): Properties = {
@@ -60,7 +61,7 @@ object Main {
   def main(args: Array[String]): Unit = {
     val params = parseArgs(args)
     Log.info("Hydra started ")
-    StatSDWrapper.init("hydra", params.statSDHost)
+    StatsD.init("hydra", params.statsDHost)
     val config = buildConfig(params)
     val db = initDB(params)
 
