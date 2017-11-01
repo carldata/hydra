@@ -26,15 +26,15 @@ class BatchProcessor() {
     deserialize(jsonStr) match {
       case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) =>
         Log.info(s"Run batch on channels $inputChannelIds, with range $startDate - $endDate")
-        StatsD.increment("batch.count")
+        StatsD.increment("batch")
         val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
-        StatsD.increment("batch.in.count", inputTs.map(_.length).sum)
+        StatsD.increment("batch.in.records", inputTs.map(_.length).sum)
         make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val endTime = System.currentTimeMillis()
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
-            StatsD.increment("batch.out.count", resultTs.length)
+            StatsD.increment("batch.out.records", resultTs.length)
             StatsD.gauge("batch.rate", 1000.0 * resultTs.length / (endTime-startTime))
             resultTs.dataPoints
               .map(x => DataRecord(outputChannelId, x._1, x._2))

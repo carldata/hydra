@@ -46,9 +46,9 @@ Use [Theia](https://github.com/carldata/theia) as a data generator.
 
 | Matric name | Description |
 |-------------|-------------|
-|`hydra.batch.count` | Number of processed batch events |
-|`hydra.batch.in.count` | Number of records read from database by batch processing |
-|`hydra.batch.out.count` | Number of generated records by batch processing |
+|`hydra.batch` | Number of processed batch events |
+|`hydra.batch.in.records` | Number of records read from database by batch processing |
+|`hydra.batch.out.records` | Number of generated records by batch processing |
 |`hydra.batch.rate` | Rate for batch processing |
 |`hydra.batch.errors.parser` | Number of failed to deserialize batch processing jobs |
 |`hydra.rt.count` | Number of processed real-time jobs |
