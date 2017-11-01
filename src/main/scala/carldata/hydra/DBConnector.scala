@@ -5,7 +5,7 @@ import java.time._
 import carldata.series.TimeSeries
 import carldata.sf.core.DBImplementation
 import com.outworkers.phantom.dsl._
-import org.joda.time.DateTimeZone
+import org.slf4j.LoggerFactory
 
 import scala.concurrent.duration._
 import scala.concurrent.{Await, Future}
@@ -33,6 +33,8 @@ abstract class Lookup_Table extends Table[Lookup_Table, LookupEntity] {
 }
 
 abstract class Data extends Table[Data, DataEntity] {
+
+  private val Log = LoggerFactory.getLogger(getClass)
 
   object channel extends StringColumn with PartitionKey
 
@@ -63,18 +65,11 @@ abstract class Data extends Table[Data, DataEntity] {
     }
   }
 
-  def fromDateTime(dt: DateTime): LocalDateTime = {
-    LocalDateTime.of(dt.getYear, dt.getMonthOfYear, dt.getDayOfMonth, dt.getHourOfDay, dt.getMinuteOfHour)
-      .withSecond(dt.getSecondOfMinute)
-      .withNano((dt.getMillis / 1000000).toInt)
-  }
+  def fromDateTime(dt: DateTime): LocalDateTime =
+    LocalDateTime.ofInstant(Instant.ofEpochMilli(dt.toInstant.getMillis), ZoneOffset.UTC)
 
-  def toDateTime(dt: LocalDateTime): org.joda.time.DateTime = {
-    new DateTime(dt.getYear, dt.getMonthValue, dt.getDayOfMonth, dt.getHour, dt.getMinute)
-      .plusSeconds(dt.getSecond)
-      .plusMillis(dt.getNano * 1000000)
-      .withZone(DateTimeZone.UTC)
-  }
+  def toDateTime(dt: LocalDateTime): DateTime = new DateTime(dt.toInstant(ZoneOffset.UTC).toEpochMilli)
+
 }
 
 class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraDB](keyspace) with TimeSeriesDB {
@@ -83,7 +78,8 @@ class CassandraDB(val keyspace: CassandraConnection) extends Database[CassandraD
 
   object lookup_table extends Lookup_Table with keyspace.Connector
 
-  override def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = data.getSeries(name, from, to)
+  override def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] =
+    data.getSeries(name, from, to)
 
   def getTable(id: String): IndexedSeq[(Float, Float)] = {
     Await.result(lookup_table.getTable(id), 30.seconds).map(x => (x.x, x.y)).toIndexedSeq
@@ -97,9 +93,7 @@ class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends TimeSeriesDB {
     Future(ts(name).slice(from, to))
   }
 
-  val lookup_table = Seq(("velocity", 1f, 100f)
-    , ("velocity", 3f, 200f)
-    , ("velocity", 5f, 400f))
+  val lookup_table = Seq(("velocity", 1f, 100f), ("velocity", 3f, 200f), ("velocity", 5f, 400f))
 
   def getTable(id: String): IndexedSeq[(Float, Float)] = {
     lookup_table.filter(p => p._1.equals(id)).map(x => (x._2, x._3)).toIndexedSeq

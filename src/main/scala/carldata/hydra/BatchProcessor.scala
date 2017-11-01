@@ -19,40 +19,41 @@ import scala.concurrent.{Await, Future}
 
 class BatchProcessor() {
 
-  private val Log = LoggerFactory.getLogger(this.getClass)
+  private val Log = LoggerFactory.getLogger(this.getClass.getName)
 
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
+    val startTime = System.currentTimeMillis()
     deserialize(jsonStr) match {
-      case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) => {
+      case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) =>
+        Log.info(s"Run batch on channels $inputChannelIds, with range $startDate - $endDate")
         StatsD.increment("batch.count")
         val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
-        StatsD.increment("batch.in.count", inputTs.size)
+        StatsD.increment("batch.in.count", inputTs.map(_.length).sum)
         make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
+            val endTime = System.currentTimeMillis()
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
-            val vs = resultTs.values
-            val ids = resultTs.index
-            StatsD.increment("batch.out.count", ids.size)
-            StatsD.gauge("batch.rate", ids.size / inputTs.size)
-            ids.zip(vs)
+            StatsD.increment("batch.out.count", resultTs.length)
+            StatsD.gauge("batch.rate", 1000.0 * resultTs.length / (endTime-startTime))
+            resultTs.dataPoints
               .map(x => DataRecord(outputChannelId, x._1, x._2))
               .map(serialize)
           case _ => Seq()
         }
 
-      }
       case _ => Seq()
     }
 
   }
 
   /** Convert from json with exception handling */
-  def deserialize(rec: String): Option[BatchRecord] = {
+  def deserialize(jsonStr: String): Option[BatchRecord] = {
     try {
-      Some(JsonParser(rec).convertTo[BatchRecord])
+      Some(JsonParser(jsonStr).convertTo[BatchRecord])
     } catch {
       case _: ParsingException =>
+        Log.warn("Error deserializing batch job:\n" + jsonStr)
         StatsD.increment("batch.errors.parser")
         None
     }
