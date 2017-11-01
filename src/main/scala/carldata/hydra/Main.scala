@@ -7,6 +7,7 @@ import com.datastax.driver.core.PlainTextAuthProvider
 import com.outworkers.phantom.connectors.ContactPoints
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
+import org.apache.kafka.streams.processor.WallclockTimestampExtractor
 import org.apache.kafka.streams.{KafkaStreams, _}
 import org.slf4j.LoggerFactory
 
@@ -54,6 +55,7 @@ object Main {
     p.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, params.kafkaBroker)
     p.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
     p.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String.getClass.getName)
+    p.put(StreamsConfig.DEFAULT_TIMESTAMP_EXTRACTOR_CLASS_CONFIG, (new WallclockTimestampExtractor).getClass.getName)
     p
   }
 
