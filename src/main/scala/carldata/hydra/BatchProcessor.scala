@@ -24,8 +24,7 @@ class BatchProcessor() {
   def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     val startTime = System.currentTimeMillis()
     deserialize(jsonStr) match {
-      case Some(BatchRecord(calculationId, script, inputChannelIds, outputChannelId, startDate, endDate)) =>
-        Log.info(s"Run batch on channels $inputChannelIds, with range $startDate - $endDate")
+      case Some(BatchRecord(_, script, inputChannelIds, outputChannelId, startDate, endDate)) =>
         StatsD.increment("batch")
         val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
@@ -39,7 +38,11 @@ class BatchProcessor() {
             resultTs.dataPoints
               .map(x => DataRecord(outputChannelId, x._1, x._2))
               .map(serialize)
-          case _ => Seq()
+          case Left(err) =>
+            StatsD.increment("batch.errors.script")
+            Log.warn("Can't compile script:" + script)
+            Log.warn(err)
+            Seq()
         }
 
       case _ => Seq()
