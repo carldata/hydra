@@ -76,6 +76,9 @@ object Main {
 
     // Start topology
     val streams = new KafkaStreams(builder, config)
+    streams.setUncaughtExceptionHandler((t: Thread, e: Throwable) => {
+      Log.error("Uncaught exception\n" + e.getMessage)
+    })
     streams.start()
     Runtime.getRuntime.addShutdownHook(new Thread(() => {
       streams.close(10, TimeUnit.SECONDS)
