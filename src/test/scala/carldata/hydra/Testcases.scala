@@ -47,18 +47,17 @@ class Testcases extends WordSpec with Matchers {
 
     "run all tests in folder: testcases" in {
       val filesList: Seq[TestCaseFile] = listFiles("testcases")
-      filesList.map {
+      filesList.foreach {
         x =>
           x.processType match {
-            case RealTimeProcess => {
+            case RealTimeProcess =>
               val xs = mkScriptRTTest(filesList.filter(_.processType == RealTimeProcess))
               xs.count(_.isLeft) shouldEqual 0
               xs.filter(_.isLeft).foreach(println)
               xs.filter(_.isRight).foreach { x =>
                 checkExecuteRT(x.right.get)
               }
-            }
-            case BatchProcess => {
+            case BatchProcess =>
               val xs = mkScriptBatchTest(filesList.filter(_.processType == BatchProcess))
               xs.count(_.isLeft) shouldEqual 0
               xs.filter(_.isLeft).foreach(println)
@@ -66,11 +65,9 @@ class Testcases extends WordSpec with Matchers {
               xs.filter(_.isRight).foreach { x =>
                 checkExecuteBatch(x.right.get)
               }
-            }
             case UnknownProcess => "Testcase:" + x.name + " do not have hydra-rt or hydra-batch params section"
           }
       }
-
     }
   }
 
