@@ -7,8 +7,8 @@ import carldata.hs.Batch.BatchRecord
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
+import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hs.RealTime.RealTimeJsonProtocol._
-import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
 import carldata.hydra.Main.computationsDB
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
@@ -32,8 +32,8 @@ object TopologyTest {
       |def main(xs: TimeSeries): TimeSeries = map(xs, f)
     """.stripMargin
 
-  val computationSet1 = Seq(
-    RealTimeJobRecord(AddAction, "calc1", code, Seq("c3"), "c-out")
+  val computationSet1: Seq[RealTimeJob] = Seq(
+    AddRealTimeJob("calc1", code, Seq("c3"), "c-out", LocalDateTime.now, LocalDateTime.now.plusDays(5))
   )
 
   val inputSet1 = Seq(

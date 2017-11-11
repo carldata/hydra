@@ -9,8 +9,8 @@ import carldata.hs.Batch.BatchRecord
 import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
+import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hs.RealTime.RealTimeJsonProtocol._
-import carldata.hs.RealTime.{AddAction, RealTimeJobRecord}
 import carldata.hydra.Main.computationsDB
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
@@ -109,8 +109,8 @@ class Testcases extends WordSpec with Matchers {
   }
 
   def checkExecuteRT(s: ScriptRTTest): Unit = {
-    val computationSet = Seq(
-      RealTimeJobRecord(AddAction, s.trigger + s.output, s.code, Seq(s.trigger), s.output)
+    val computationSet: Seq[RealTimeJob] = Seq(
+      AddRealTimeJob(s.trigger + s.output, s.code, Seq(s.trigger), s.output, LocalDateTime.now, LocalDateTime.now.plusDays(5))
     )
     val db = new TestCaseDB(Map.empty)
     val strings: Serde[String] = Serdes.String()
@@ -138,7 +138,7 @@ class Testcases extends WordSpec with Matchers {
     val xs = s.records.map(x => x.timestamp).toVector
     val vs = s.records.map(x => x.value).toVector
     val ts: TimeSeries[Float] = TimeSeries(xs, vs)
-    val db = new TestCaseDB(Map((s.input -> ts)))
+    val db = new TestCaseDB(Map(s.input -> ts))
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
