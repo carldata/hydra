@@ -10,6 +10,7 @@ import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.RealTimeJsonProtocol._
 import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hydra.Main.computationsDB
+import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
 import org.apache.kafka.streams.StreamsConfig
@@ -85,9 +86,14 @@ class Testcases extends WordSpec with Matchers {
 
   def checkExecuteRT(s: ScriptRTTest): Unit = {
     val computationSet: Seq[RealTimeJob] = Seq(
-      AddRealTimeJob(s.trigger + s.output, s.code, Seq(s.trigger), s.output, LocalDateTime.now, LocalDateTime.now.plusDays(5))
+      AddRealTimeJob(s.trigger + s.output, s.code, Seq(s.trigger), s.output, s.records.head.timestamp, s.records.last.timestamp)
     )
-    val db = new TestCaseDB(Map.empty)
+
+    val ts = s.records
+      .groupBy(x => x.channelId)
+      .map(x => (x._1, TimeSeries(x._2.map(y => y.timestamp).toVector, x._2.map(y => y.value).toVector)))
+
+    val db = new TestCaseDB(ts)
     val strings: Serde[String] = Serdes.String()
     val cmd: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = s.records.map(x => ("", x.toJson.compactPrint))

@@ -95,6 +95,10 @@ object Main {
   def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
     cs.foreach((_, v) => rtCmdProcessor.process(v, db))
+
+    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v, db).asJava)
+    dsOut.to(prefix + "data")
+
   }
 
   def initDB(params: Params): CassandraDB = {

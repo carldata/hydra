@@ -16,11 +16,12 @@ class RTCommandProcessor(computationDB: ComputationDB) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
 
+  val batchProcessor = new BatchProcessor()
   /**
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String, db: TimeSeriesDB): Unit = {
+  def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(AddRealTimeJob(calculationId, script, trigger, outputChannel, startDate, endDate)) =>
@@ -35,9 +36,12 @@ class RTCommandProcessor(computationDB: ComputationDB) {
             }
           }
 
+        batchProcessor.process(AddRealTimeJob(calculationId, script, trigger, outputChannel, startDate, endDate),db)
+
       case Some(RemoveRealTimeJob(calculationId)) =>
         computationDB.remove(calculationId)
-      case _ =>
+        Seq()
+      case _ => Seq()
     }
 
   }
