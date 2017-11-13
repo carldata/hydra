@@ -4,13 +4,11 @@ import java.time.LocalDateTime
 import java.util.Properties
 
 import carldata.hs.Batch.BatchRecord
-import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
-import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hs.RealTime.RealTimeJsonProtocol._
+import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hydra.Main.computationsDB
-import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
 import org.apache.kafka.streams.StreamsConfig
@@ -77,7 +75,6 @@ class TopologyTest extends FlatSpec with Matchers {
 
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
-  val batchProcessor = new BatchProcessor()
 
   "StreamProcessing" should "not process event without computation" in {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
@@ -120,22 +117,6 @@ class TopologyTest extends FlatSpec with Matchers {
       .output[String, String]("data", strings, strings, 2)
 
     fromJson(received).filter(_.channelId == "c-out") shouldEqual expected
-  }
-
-  "BatchProcessing" should "process data" in {
-    val time = LocalDateTime.now
-    val input: Seq[(String, String)] = batchInput.map(x => ("", x.toJson.compactPrint))
-    val expected = Seq(DataRecord("milesPH", time.plusHours(1), 1.6093f), DataRecord("milesPH", time.plusHours(2), 3.2186f), DataRecord("milesPH", time.plusHours(3), 4.8279f))
-    val m = Map[String, TimeSeries[Float]]("kilometersPH" -> TimeSeries(Vector(time.plusHours(1), time.plusHours(2), time.plusHours(3)), Vector(1, 2, 3))
-      , "kilometersPH2" -> TimeSeries(Vector(time, time.plusMinutes(1), time.plusMinutes(2)), Vector(11, 22, 33)))
-    val db = new TestCaseDB(m)
-
-    val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildBatchStream(builder, "", db, batchProcessor))
-      .input("hydra-batch", strings, strings, input)
-      .output[String, String]("data", strings, strings, expected.size)
-
-    fromJson(received).filter(_.channelId == "milesPH").toList shouldBe expected
   }
 
 }

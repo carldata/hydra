@@ -5,14 +5,11 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.Properties
 
-import carldata.hs.Batch.BatchRecord
-import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
-import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hs.RealTime.RealTimeJsonProtocol._
+import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hydra.Main.computationsDB
-import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
 import org.apache.kafka.common.serialization.{Serde, Serdes}
 import org.apache.kafka.streams.StreamsConfig
@@ -28,19 +25,14 @@ class Testcases extends WordSpec with Matchers {
 
   case object RealTimeProcess extends ProcessType
 
-  case object BatchProcess extends ProcessType
-
   case object UnknownProcess extends ProcessType
 
   case class TestCaseFile(name: String, text: String, processType: ProcessType)
 
   case class ScriptRTTest(name: String, code: String, trigger: String, output: String, records: Seq[DataRecord], expected: Seq[DataRecord])
 
-  case class ScriptBatchTest(name: String, code: String, input: String, output: String, startDate: String, endDate: String, records: Seq[DataRecord], expected: Seq[DataRecord])
-
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
-  val batchProcessor = new BatchProcessor()
 
   "Testcases runner" should {
 
@@ -57,15 +49,7 @@ class Testcases extends WordSpec with Matchers {
               xs.filter(_.isRight).foreach { x =>
                 checkExecuteRT(x.right.get)
               }
-            case BatchProcess =>
-              val xs = mkScriptBatchTest(filesList.filter(_.processType == BatchProcess))
-              xs.count(_.isLeft) shouldEqual 0
-              xs.filter(_.isLeft).foreach(println)
-
-              xs.filter(_.isRight).foreach { x =>
-                checkExecuteBatch(x.right.get)
-              }
-            case UnknownProcess => "Testcase:" + x.name + " do not have hydra-rt or hydra-batch params section"
+            case UnknownProcess => "Testcase:" + x.name + " do not have hydra-rtparams section"
           }
       }
     }
@@ -78,7 +62,6 @@ class Testcases extends WordSpec with Matchers {
       .map { f => (f.getName, Source.fromFile(f).getLines().mkString("\n")) }
       .map { x => {
         if (x._2.contains("hydra-rt")) TestCaseFile(x._1, x._2, RealTimeProcess)
-        else if (x._2.contains("hydra-batch")) TestCaseFile(x._1, x._2, BatchProcess)
         else TestCaseFile("", "", UnknownProcess)
       }
       }
@@ -90,11 +73,6 @@ class Testcases extends WordSpec with Matchers {
     }
   }
 
-  def mkScriptBatchTest(s: Seq[TestCaseFile]): Seq[Either[String, Testcases.this.ScriptBatchTest]] = {
-    s.map { f =>
-      groupToBatchEither(f.name, getSection(f.text, "script"), getParams(f.text, "input", "hydra-batch"), getParams(f.text, "output", "hydra-batch"), getParams(f.text, "startDate", "hydra-batch"), getParams(f.text, "endDate", "hydra-batch"), getCsv(f.text, "records"), getCsv(f.text, "expected"))
-    }
-  }
 
   def buildConfig: Properties = {
     val p = new Properties()
@@ -126,28 +104,6 @@ class Testcases extends WordSpec with Matchers {
       .filter(_.channelId == s.output) shouldEqual s.expected
   }
 
-  def checkExecuteBatch(s: ScriptBatchTest): Unit = {
-    val computationSet = Seq(
-      BatchRecord(s.input + s.output, s.code, Seq(s.input), s.output, LocalDateTime.parse(s.startDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME), LocalDateTime.parse(s.endDate, DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-    )
-    val strings: Serde[String] = Serdes.String()
-    val batch: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint)).toVector
-    val xs = s.records.map(x => x.timestamp).toVector
-    val vs = s.records.map(x => x.value).toVector
-    val ts: TimeSeries[Float] = TimeSeries(xs, vs)
-    val db = new TestCaseDB(Map(s.input -> ts))
-    val streams = MockedStreams().config(buildConfig)
-      .topology { builder =>
-        Main.buildDataStream(builder, "", dataProcessor)
-        Main.buildBatchStream(builder, "", db, batchProcessor)
-      }
-
-    streams.input("hydra-batch", strings, strings, batch)
-      .output[String, String]("data", strings, strings, s.expected.size)
-      .map(_._2.parseJson.convertTo[DataRecord])
-      .filter(_.channelId == s.output) shouldEqual s.expected
-  }
-
   def groupToRTEither(name: String, code: Option[String], trigger: Option[String], output: Option[String], records: Option[Seq[DataRecord]], expected: Option[Seq[DataRecord]]): Either[String, ScriptRTTest] = {
     val st = for {
       c <- code
@@ -156,19 +112,6 @@ class Testcases extends WordSpec with Matchers {
       ps <- records
       e <- expected
     } yield ScriptRTTest(name, c, t, o, ps, e)
-    st.toRight(name)
-  }
-
-  def groupToBatchEither(name: String, code: Option[String], input: Option[String], output: Option[String], startDate: Option[String], endDate: Option[String], records: Option[Seq[DataRecord]], expected: Option[Seq[DataRecord]]): Either[String, ScriptBatchTest] = {
-    val st = for {
-      c <- code
-      i <- input
-      o <- output
-      sd <- startDate
-      ed <- endDate
-      ps <- records
-      e <- expected
-    } yield ScriptBatchTest(name, c, i, o, sd, ed, ps, e)
     st.toRight(name)
   }
 
