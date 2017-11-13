@@ -4,11 +4,10 @@ import java.time.LocalDateTime
 import java.util.Properties
 
 import carldata.hs.Batch.BatchRecord
-import carldata.hs.Batch.BatchRecordJsonProtocol._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
-import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hs.RealTime.RealTimeJsonProtocol._
+import carldata.hs.RealTime.{AddRealTimeJob, RealTimeJob}
 import carldata.hydra.Main.computationsDB
 import carldata.series.TimeSeries
 import com.madewithtea.mockedstreams.MockedStreams
@@ -33,7 +32,7 @@ object TopologyTest {
     """.stripMargin
 
   val computationSet1: Seq[RealTimeJob] = Seq(
-    AddRealTimeJob("calc1", code, Seq("c3"), "c-out", LocalDateTime.now, LocalDateTime.now.plusDays(5))
+    AddRealTimeJob("calc1", code, Seq("c0"), "c-out", LocalDateTime.now, LocalDateTime.now.plusDays(5))
   )
 
   val inputSet1 = Seq(
@@ -45,11 +44,11 @@ object TopologyTest {
   )
 
   val inputSet5 = Seq(
-    DataRecord("c1", LocalDateTime.now(), 1),
-    DataRecord("c2", LocalDateTime.now(), 1),
-    DataRecord("c3", LocalDateTime.now(), 1),
-    DataRecord("c4", LocalDateTime.now(), 1),
-    DataRecord("c5", LocalDateTime.now(), 1)
+    DataRecord("c0", LocalDateTime.now.plusMinutes(1), 1),
+    DataRecord("c0", LocalDateTime.now.plusMinutes(2), 1),
+    DataRecord("c0", LocalDateTime.now.plusMinutes(3), 1),
+    DataRecord("c0", LocalDateTime.now.plusMinutes(4), 1),
+    DataRecord("c0", LocalDateTime.now.plusMinutes(5), 1)
   )
 
   def buildConfig: Properties = {
@@ -77,7 +76,6 @@ class TopologyTest extends FlatSpec with Matchers {
 
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
-  val batchProcessor = new BatchProcessor()
 
   "StreamProcessing" should "not process event without computation" in {
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
@@ -92,7 +90,11 @@ class TopologyTest extends FlatSpec with Matchers {
 
   it should "store computation in the DB" in {
     val input: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
-    val db = new TestCaseDB(Map.empty)
+    val ts = inputSet1
+      .groupBy(x => x.channelId)
+      .map(x => (x._1, TimeSeries(x._2.map(y => y.timestamp).toVector, x._2.map(y => y.value).toVector)))
+
+    val db = new TestCaseDB(ts)
     MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
@@ -107,35 +109,29 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(2).timestamp, 2.0f))
-    val db = new TestCaseDB(Map.empty)
+    val expected = Seq(DataRecord("c-out", inputSet5(0).timestamp, 2.0f)
+      ,DataRecord("c-out", inputSet5(1).timestamp, 2.0f)
+      ,DataRecord("c-out", inputSet5(2).timestamp, 2.0f)
+      ,DataRecord("c-out", inputSet5(3).timestamp, 2.0f)
+      ,DataRecord("c-out", inputSet5(4).timestamp, 2.0f))
+
+    val ts = inputSet5
+      .groupBy(x => x.channelId)
+      .map(x => (x._1, TimeSeries(x._2.map(y => y.timestamp).toVector, x._2.map(y => y.value).toVector)))
+
+    val db = new TestCaseDB(ts)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
         Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
       }
     streams.input("hydra-rt", strings, strings, cmd)
+      //.output[String, String]("data", strings, strings, 6)
 
     val received = streams.input("data", strings, strings, input)
-      .output[String, String]("data", strings, strings, 2)
+      .output[String, String]("data", strings, strings, 6)
 
     fromJson(received).filter(_.channelId == "c-out") shouldEqual expected
-  }
-
-  "BatchProcessing" should "process data" in {
-    val time = LocalDateTime.now
-    val input: Seq[(String, String)] = batchInput.map(x => ("", x.toJson.compactPrint))
-    val expected = Seq(DataRecord("milesPH", time.plusHours(1), 1.6093f), DataRecord("milesPH", time.plusHours(2), 3.2186f), DataRecord("milesPH", time.plusHours(3), 4.8279f))
-    val m = Map[String, TimeSeries[Float]]("kilometersPH" -> TimeSeries(Vector(time.plusHours(1), time.plusHours(2), time.plusHours(3)), Vector(1, 2, 3))
-      , "kilometersPH2" -> TimeSeries(Vector(time, time.plusMinutes(1), time.plusMinutes(2)), Vector(11, 22, 33)))
-    val db = new TestCaseDB(m)
-
-    val received = MockedStreams().config(buildConfig)
-      .topology(builder => Main.buildBatchStream(builder, "", db, batchProcessor))
-      .input("hydra-batch", strings, strings, input)
-      .output[String, String]("data", strings, strings, expected.size)
-
-    fromJson(received).filter(_.channelId == "milesPH").toList shouldBe expected
   }
 
 }

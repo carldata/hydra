@@ -1,15 +1,12 @@
 package carldata.hydra
 
-
-import carldata.hs.Batch.BatchRecordJsonProtocol._
-import carldata.hs.Batch._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
+import carldata.hs.RealTime.AddRealTimeJob
 import carldata.series.TimeSeries
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
 import org.slf4j.LoggerFactory
-import spray.json.JsonParser.ParsingException
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -21,45 +18,30 @@ class BatchProcessor() {
 
   private val Log = LoggerFactory.getLogger(this.getClass.getName)
 
-  def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
+  def process(job: AddRealTimeJob, db: TimeSeriesDB): Seq[String] = {
     val startTime = System.currentTimeMillis()
-    deserialize(jsonStr) match {
-      case Some(BatchRecord(_, script, inputChannelIds, outputChannelId, startDate, endDate)) =>
+
         StatsD.increment("batch")
-        val futures = inputChannelIds.map(id => db.getSeries(id, startDate, endDate))
+        val futures = job.inputChannelIds.map(id => db.getSeries(id, job.startDate, job.endDate))
         val inputTs = Await.result(Future.sequence(futures), 30.seconds)
         StatsD.increment("batch.in.records", inputTs.map(_.length).sum)
-        make(script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
+        make(job.script).flatMap(exec => Interpreter(exec, db).run("main", inputTs)) match {
           case Right(xs) =>
             val endTime = System.currentTimeMillis()
             val resultTs = xs.asInstanceOf[TimeSeries[Float]]
             StatsD.increment("batch.out.records", resultTs.length)
             StatsD.gauge("batch.rate", 1000.0 * resultTs.length / (endTime-startTime))
             resultTs.dataPoints
-              .map(x => DataRecord(outputChannelId, x._1, x._2))
+              .map(x => DataRecord(job.outputChannelId, x._1, x._2))
               .map(serialize)
           case Left(err) =>
             StatsD.increment("batch.errors.script")
-            Log.warn("Can't compile script:" + script)
+            Log.warn("Can't compile script:" + job.script)
             Log.warn(err)
             Seq()
         }
 
-      case _ => Seq()
-    }
 
-  }
-
-  /** Convert from json with exception handling */
-  def deserialize(jsonStr: String): Option[BatchRecord] = {
-    try {
-      Some(JsonParser(jsonStr).convertTo[BatchRecord])
-    } catch {
-      case _: ParsingException =>
-        Log.warn("Error deserializing batch job:\n" + jsonStr)
-        StatsD.increment("batch.errors.parser")
-        None
-    }
   }
 
 

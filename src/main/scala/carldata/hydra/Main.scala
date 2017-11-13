@@ -26,7 +26,6 @@ object Main {
   val computationsDB = new ComputationDB()
   val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
-  val batchProcessor = new BatchProcessor()
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String,
                     pass: String, statsDHost: String)
@@ -70,7 +69,6 @@ object Main {
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
     buildRealtimeStream(builder, params.prefix, db, rtCmdProcessor)
-    buildBatchStream(builder, params.prefix, db, batchProcessor)
     buildDataStream(builder, params.prefix, dataProcessor)
 
 
@@ -96,15 +94,9 @@ object Main {
   /** Data topic processing pipeline */
   def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    cs.foreach((_, v) => rtCmdProcessor.process(v, db))
-  }
-
-  /** Batch processing pipeline */
-  def buildBatchStream(builder: KStreamBuilder, prefix: String, db: TimeSeriesDB, batchProcessor: BatchProcessor): Unit = {
-
-    val ds: KStream[String, String] = builder.stream(prefix + "hydra-batch")
-    val dsOut: KStream[String, String] = ds.flatMapValues(v => batchProcessor.process(v, db).asJava)
+    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v, db).asJava)
     dsOut.to(prefix + "data")
+
   }
 
   def initDB(params: Params): CassandraDB = {
