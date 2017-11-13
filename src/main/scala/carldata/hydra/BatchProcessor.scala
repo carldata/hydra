@@ -1,7 +1,5 @@
 package carldata.hydra
 
-import carldata.hs.Batch.BatchRecordJsonProtocol._
-import carldata.hs.Batch._
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.AddRealTimeJob
@@ -9,7 +7,6 @@ import carldata.series.TimeSeries
 import carldata.sf.Compiler.make
 import carldata.sf.Interpreter
 import org.slf4j.LoggerFactory
-import spray.json.JsonParser.ParsingException
 import spray.json._
 
 import scala.concurrent.ExecutionContext.Implicits.global
@@ -46,19 +43,6 @@ class BatchProcessor() {
 
 
   }
-/*
-  /** Convert from json with exception handling */
-  def deserialize(jsonStr: String): Option[BatchRecord] = {
-    try {
-      Some(JsonParser(jsonStr).convertTo[BatchRecord])
-    } catch {
-      case _: ParsingException =>
-        Log.warn("Error deserializing batch job:\n" + jsonStr)
-        StatsD.increment("batch.errors.parser")
-        None
-    }
-  }
-  */
 
 
   /** Serialize message back to json */
