@@ -1,10 +1,10 @@
 package carldata.hydra
 
+import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.PlainTextAuthProvider
-import com.outworkers.phantom.connectors.ContactPoints
+import com.datastax.driver.core.{Cluster, SocketOptions}
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor
@@ -99,14 +99,19 @@ object Main {
 
   }
 
-  def initDB(params: Params): CassandraDB = {
-    if (params.user == "" || params.pass == "") {
-      new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
-    } else {
-      new CassandraDB(ContactPoints(params.db)
-        .withClusterBuilder(_.withAuthProvider(new PlainTextAuthProvider(params.user, params.pass)))
-        .keySpace(params.keyspace))
+  /** Init connection to the database */
+  def initDB(params: Params): TimeSeriesDB = {
+    val builder = Cluster.builder()
+      .withSocketOptions(new SocketOptions().setReadTimeoutMillis(30000))
+      .addContactPoints(params.db.map(InetAddress.getByName).asJava)
+      .withPort(9042)
+
+    if (params.user != "" && params.pass != "") {
+      builder.withCredentials(params.user, params.pass)
     }
+
+    val session = builder.build().connect(params.keyspace)
+    TimeSeriesDB(session)
   }
 
 }
