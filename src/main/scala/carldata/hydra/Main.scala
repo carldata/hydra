@@ -92,7 +92,7 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: DBImplementation, rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
     val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v, db).asJava)
     dsOut.to(prefix + "data")

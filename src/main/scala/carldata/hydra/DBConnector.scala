@@ -3,12 +3,18 @@ package carldata.hydra
 import java.time._
 
 import carldata.series.TimeSeries
-import carldata.sf.core.DBImplementation
 import com.datastax.driver.core.{ResultSet, ResultSetFuture, Session, SimpleStatement}
 import com.google.common.util.concurrent.{FutureCallback, Futures}
 
 import scala.collection.JavaConverters._
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
+
+trait DBImplementation extends carldata.sf.core.DBImplementation {
+  def getTable(id: String): IndexedSeq[(Float, Float)]
+
+  def getSeries(channel: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]]
+}
 
 object TimeSeriesDB {
   def apply(db: Session): TimeSeriesDB = new TimeSeriesDB(db)
@@ -63,4 +69,20 @@ class TimeSeriesDB(db: Session) extends DBImplementation {
   }
 
   def parseTimestamp(dt: java.util.Date): LocalDateTime = LocalDateTime.ofInstant(dt.toInstant, ZoneOffset.UTC)
+}
+
+
+class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends DBImplementation {
+
+  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
+    Future(ts(name).slice(from, to))
+  }
+
+  val lookup_table = Seq(("velocity", 1f, 100f), ("velocity", 3f, 200f), ("velocity", 5f, 400f))
+
+  def getTable(id: String): IndexedSeq[(Float, Float)] = {
+    lookup_table.filter(p => p._1.equals(id)).map(x => (x._2, x._3)).toIndexedSeq
+  }
+
+
 }

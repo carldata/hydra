@@ -21,7 +21,7 @@ class RTCommandProcessor(computationDB: ComputationDB) {
     * Process data event. Single event can generate 0 or more then 1 computed events.
     * The number of output events depends on how many computations are defined on given channel
     */
-  def process(jsonStr: String, db: TimeSeriesDB): Seq[String] = {
+  def process(jsonStr: String, db: DBImplementation): Seq[String] = {
     Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(AddRealTimeJob(calculationId, script, trigger, outputChannel, startDate, endDate)) =>

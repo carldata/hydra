@@ -18,7 +18,7 @@ class BatchProcessor() {
 
   private val Log = LoggerFactory.getLogger(this.getClass.getName)
 
-  def process(job: AddRealTimeJob, db: TimeSeriesDB): Seq[String] = {
+  def process(job: AddRealTimeJob, db: DBImplementation): Seq[String] = {
     val startTime = System.currentTimeMillis()
 
         StatsD.increment("batch")
