@@ -1,12 +1,12 @@
 FROM openjdk:jdk-alpine
 
 ENV SCALA_VERSION 2.12.3
-ENV Kafka_Broker localhost:9092
-ENV Cassandra_Address localhost
-ENV Cassandra_Keyspace default
-ENV Cassandra_Password default
-ENV Cassandra_Username default
-ENV StatsD_Host localhost
+ENV KAFKA_BROKER  localhost:9092
+ENV CASSANDRA_ADDRESS localhost
+ENV CASSANDRA_KEYSPACE default
+ENV CASSANDRA_PASSWORD default
+ENV CASSANDRA_USERNAME default
+ENV STATSD_HOST localhost
 
 WORKDIR /root
 ADD target/scala-2.12/hydra.jar /root/hydra.jar
