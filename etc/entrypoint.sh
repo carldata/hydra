@@ -1,3 +1,3 @@
 #!/bin/sh
-java -Dlogback.configurationFile=/root/gelf.xml -jar /root/hydra.jar --kafka=$Kafka_Broker --db=$Cassandra_Address --keyspace=$Cassandra_Keyspace --user=$Cassandra_Username --pass=$Cassandra_Password  --statsDHost=$StatsD_Host
+java -Dlogback.configurationFile=/root/gelf.xml -jar /root/hydra.jar --kafka=$KAFKA_BROKER --db=$CASSANDRA_ADDRESS --keyspace=$CASSANDRA_KEYSPACE --user=$CASSANDRA_USERNAME --pass=$CASSANDRA_PASSWORD  --statsd-host=$STATSD_HOST
 

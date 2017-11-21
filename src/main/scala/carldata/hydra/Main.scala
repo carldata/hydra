@@ -42,7 +42,7 @@ object Main {
     val user = stringArg(args, "user", "")
     val pass = stringArg(args, "pass", "")
     val keyspace = stringArg(args, "keyspace", "")
-    val statsDHost = stringArg(args, "statsDHost", "none")
+    val statsDHost = stringArg(args, "statsd-host", "none")
 
     Params(kafka, prefix, db, keyspace, user, pass, statsDHost)
   }
