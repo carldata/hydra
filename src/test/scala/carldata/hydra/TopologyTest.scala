@@ -74,7 +74,7 @@ class TopologyTest extends FlatSpec with Matchers {
 
   import TopologyTest._
 
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+
   val dataProcessor = new DataProcessor(computationsDB)
 
   "StreamProcessing" should "not process event without computation" in {
@@ -95,10 +95,11 @@ class TopologyTest extends FlatSpec with Matchers {
       .map(x => (x._1, TimeSeries(x._2.map(y => y.timestamp).toVector, x._2.map(y => y.value).toVector)))
 
     val db = new TestCaseDB(ts)
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, db)
     MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
-        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
+        Main.buildRealtimeStream(builder, "", rtCmdProcessor)
       }
       .input("hydra-rt", strings, strings, input)
       .output[String, String]("hydra-rt", strings, strings, input.size)
@@ -110,23 +111,24 @@ class TopologyTest extends FlatSpec with Matchers {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
     val expected = Seq(DataRecord("c-out", inputSet5(0).timestamp, 2.0f)
-      ,DataRecord("c-out", inputSet5(1).timestamp, 2.0f)
-      ,DataRecord("c-out", inputSet5(2).timestamp, 2.0f)
-      ,DataRecord("c-out", inputSet5(3).timestamp, 2.0f)
-      ,DataRecord("c-out", inputSet5(4).timestamp, 2.0f))
+      , DataRecord("c-out", inputSet5(1).timestamp, 2.0f)
+      , DataRecord("c-out", inputSet5(2).timestamp, 2.0f)
+      , DataRecord("c-out", inputSet5(3).timestamp, 2.0f)
+      , DataRecord("c-out", inputSet5(4).timestamp, 2.0f))
 
     val ts = inputSet5
       .groupBy(x => x.channelId)
       .map(x => (x._1, TimeSeries(x._2.map(y => y.timestamp).toVector, x._2.map(y => y.value).toVector)))
 
     val db = new TestCaseDB(ts)
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, db)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
-        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
+        Main.buildRealtimeStream(builder, "", rtCmdProcessor)
       }
     streams.input("hydra-rt", strings, strings, cmd)
-      //.output[String, String]("data", strings, strings, 6)
+    //.output[String, String]("data", strings, strings, 6)
 
     val received = streams.input("data", strings, strings, input)
       .output[String, String]("data", strings, strings, 6)

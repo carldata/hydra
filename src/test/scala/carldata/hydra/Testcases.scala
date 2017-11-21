@@ -32,7 +32,7 @@ class Testcases extends WordSpec with Matchers {
 
   case class ScriptRTTest(name: String, code: String, trigger: String, output: String, records: Seq[DataRecord], expected: Seq[DataRecord])
 
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
+
   val dataProcessor = new DataProcessor(computationsDB)
 
   "Testcases runner" should {
@@ -97,11 +97,11 @@ class Testcases extends WordSpec with Matchers {
     val strings: Serde[String] = Serdes.String()
     val cmd: Seq[(String, String)] = computationSet.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = s.records.map(x => ("", x.toJson.compactPrint))
-
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, db)
     val streams = MockedStreams().config(buildConfig)
       .topology { builder =>
         Main.buildDataStream(builder, "", dataProcessor)
-        Main.buildRealtimeStream(builder, "", db, rtCmdProcessor)
+        Main.buildRealtimeStream(builder, "", rtCmdProcessor)
       }
 
     streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)

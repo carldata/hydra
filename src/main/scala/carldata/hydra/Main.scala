@@ -1,10 +1,10 @@
 package carldata.hydra
 
+import java.net.InetAddress
 import java.util.Properties
 import java.util.concurrent.TimeUnit
 
-import com.datastax.driver.core.PlainTextAuthProvider
-import com.outworkers.phantom.connectors.ContactPoints
+import com.datastax.driver.core.{Cluster, SocketOptions}
 import org.apache.kafka.common.serialization._
 import org.apache.kafka.streams.kstream.{KStream, KStreamBuilder}
 import org.apache.kafka.streams.processor.WallclockTimestampExtractor
@@ -24,7 +24,6 @@ object Main {
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String,
@@ -65,10 +64,10 @@ object Main {
     StatsD.init("hydra", params.statsDHost)
     val config = buildConfig(params)
     val db = initDB(params)
-
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, db)
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix, db, rtCmdProcessor)
+    buildRealtimeStream(builder, params.prefix, rtCmdProcessor)
     buildDataStream(builder, params.prefix, dataProcessor)
 
 
@@ -92,21 +91,26 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: TimeSeriesDB, rtCmdProcessor: RTCommandProcessor): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v, db).asJava)
+    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v).asJava)
     dsOut.to(prefix + "data")
 
   }
 
+  /** Init connection to the database */
   def initDB(params: Params): CassandraDB = {
-    if (params.user == "" || params.pass == "") {
-      new CassandraDB(ContactPoints(params.db).keySpace(params.keyspace))
-    } else {
-      new CassandraDB(ContactPoints(params.db)
-        .withClusterBuilder(_.withAuthProvider(new PlainTextAuthProvider(params.user, params.pass)))
-        .keySpace(params.keyspace))
+    val builder = Cluster.builder()
+      .withSocketOptions(new SocketOptions().setReadTimeoutMillis(30000))
+      .addContactPoints(params.db.map(InetAddress.getByName).asJava)
+      .withPort(9042)
+
+    if (params.user != "" && params.pass != "") {
+      builder.withCredentials(params.user, params.pass)
     }
+
+    val session = builder.build().connect(params.keyspace)
+    CassandraDB(session)
   }
 
 }
