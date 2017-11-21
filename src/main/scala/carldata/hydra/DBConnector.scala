@@ -3,31 +3,31 @@ package carldata.hydra
 import java.time._
 
 import carldata.series.TimeSeries
+import carldata.sf.core.DBImplementation
 import com.datastax.driver.core.{ResultSet, ResultSetFuture, Session, SimpleStatement}
 import com.google.common.util.concurrent.{FutureCallback, Futures}
 
 import scala.collection.JavaConverters._
-import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.{Future, Promise}
 
-trait DBImplementation extends carldata.sf.core.DBImplementation {
-  def getTable(id: String): IndexedSeq[(Float, Float)]
+trait DBConnector {
+  def getImplementation: DBImplementation
 
   def getSeries(channel: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]]
 }
 
-object TimeSeriesDB {
-  def apply(db: Session): TimeSeriesDB = new TimeSeriesDB(db)
+object CassandraDB {
+  def apply(db: Session): CassandraDB = new CassandraDB(db)
 }
 
-class TimeSeriesDB(db: Session) extends DBImplementation {
+class CassandraDB(db: Session) extends DBConnector {
 
 
   implicit def resultSetFutureToScala(f: ResultSetFuture): Future[TimeSeries[Float]] = {
     val p = Promise[TimeSeries[Float]]()
     Futures.addCallback(f,
       new FutureCallback[ResultSet] {
-        def onSuccess(r: ResultSet) = p success {
+        def onSuccess(r: ResultSet): Unit = p success {
           val rs = r.asScala
             .map { r =>
               (parseTimestamp(r.getTimestamp(0)), r.getFloat(1))
@@ -35,23 +35,26 @@ class TimeSeriesDB(db: Session) extends DBImplementation {
           new TimeSeries(rs)
         }
 
-        def onFailure(t: Throwable) = p failure t
+        def onFailure(t: Throwable): Unit = p failure t
       })
     p.future
   }
 
-  def getTable(id: String): IndexedSeq[(Float, Float)] = {
-    val q =
-      s"""
-         |SELECT x, y
-         |FROM lookup_table
-         |WHERE id='$id'
+  def getImplementation: DBImplementation = {
+    (id: String) => {
+      val q =
+        s"""
+           |SELECT x, y
+           |FROM lookup_table
+           |WHERE id='$id'
       """.stripMargin
-    val statement = new SimpleStatement(q)
-    db.execute(statement).asScala.map { r =>
-      (r.getFloat(0), r.getFloat(1))
-    }.toIndexedSeq
+      val statement = new SimpleStatement(q)
+      db.execute(statement).asScala.map { r =>
+        (r.getFloat(0), r.getFloat(1))
+      }.toIndexedSeq
+    }
   }
+
 
   def getSeries(channel: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
     val t1 = from.toInstant(ZoneOffset.UTC).toEpochMilli
@@ -69,20 +72,4 @@ class TimeSeriesDB(db: Session) extends DBImplementation {
   }
 
   def parseTimestamp(dt: java.util.Date): LocalDateTime = LocalDateTime.ofInstant(dt.toInstant, ZoneOffset.UTC)
-}
-
-
-class TestCaseDB(ts: Map[String, TimeSeries[Float]]) extends DBImplementation {
-
-  def getSeries(name: String, from: LocalDateTime, to: LocalDateTime): Future[TimeSeries[Float]] = {
-    Future(ts(name).slice(from, to))
-  }
-
-  val lookup_table = Seq(("velocity", 1f, 100f), ("velocity", 3f, 200f), ("velocity", 5f, 400f))
-
-  def getTable(id: String): IndexedSeq[(Float, Float)] = {
-    lookup_table.filter(p => p._1.equals(id)).map(x => (x._2, x._3)).toIndexedSeq
-  }
-
-
 }

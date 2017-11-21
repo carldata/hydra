@@ -24,7 +24,6 @@ object Main {
 
   /** Memory db with computation which should be triggered by data topic */
   val computationsDB = new ComputationDB()
-  val rtCmdProcessor = new RTCommandProcessor(computationsDB)
   val dataProcessor = new DataProcessor(computationsDB)
 
   case class Params(kafkaBroker: String, prefix: String, db: Seq[String], keyspace: String, user: String,
@@ -65,10 +64,10 @@ object Main {
     StatsD.init("hydra", params.statsDHost)
     val config = buildConfig(params)
     val db = initDB(params)
-
+    val rtCmdProcessor = new RTCommandProcessor(computationsDB, db)
     // Build processing topology
     val builder: KStreamBuilder = new KStreamBuilder()
-    buildRealtimeStream(builder, params.prefix, db, rtCmdProcessor)
+    buildRealtimeStream(builder, params.prefix, rtCmdProcessor)
     buildDataStream(builder, params.prefix, dataProcessor)
 
 
@@ -92,15 +91,15 @@ object Main {
   }
 
   /** Data topic processing pipeline */
-  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", db: DBImplementation, rtCmdProcessor: RTCommandProcessor): Unit = {
+  def buildRealtimeStream(builder: KStreamBuilder, prefix: String = "", rtCmdProcessor: RTCommandProcessor): Unit = {
     val cs: KStream[String, String] = builder.stream(prefix + "hydra-rt")
-    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v, db).asJava)
+    val dsOut: KStream[String, String] = cs.flatMapValues(v => rtCmdProcessor.process(v).asJava)
     dsOut.to(prefix + "data")
 
   }
 
   /** Init connection to the database */
-  def initDB(params: Params): TimeSeriesDB = {
+  def initDB(params: Params): CassandraDB = {
     val builder = Cluster.builder()
       .withSocketOptions(new SocketOptions().setReadTimeoutMillis(30000))
       .addContactPoints(params.db.map(InetAddress.getByName).asJava)
@@ -111,7 +110,7 @@ object Main {
     }
 
     val session = builder.build().connect(params.keyspace)
-    TimeSeriesDB(session)
+    CassandraDB(session)
   }
 
 }
