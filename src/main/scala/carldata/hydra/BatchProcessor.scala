@@ -1,5 +1,7 @@
 package carldata.hydra
 
+import java.util.concurrent.TimeoutException
+
 import carldata.hs.Data.DataJsonProtocol._
 import carldata.hs.Data.DataRecord
 import carldata.hs.RealTime.AddRealTimeJob
@@ -23,22 +25,30 @@ object BatchProcessor {
 
     StatsD.increment("batch")
     val futures = job.inputChannelIds.map(id => db.getSeries(id, job.startDate, job.endDate))
-    val inputTs = Await.result(Future.sequence(futures), 30.seconds)
-    StatsD.increment("batch.in.records", inputTs.map(_.length).sum)
-    make(job.script).flatMap(exec => Interpreter(exec, db.getImplementation).run("main", inputTs)) match {
-      case Right(xs) =>
-        val endTime = System.currentTimeMillis()
-        val resultTs = xs.asInstanceOf[TimeSeries[Float]]
-        StatsD.increment("batch.out.records", resultTs.length)
-        StatsD.gauge("batch.rate", 1000.0 * resultTs.length / (endTime - startTime))
-        resultTs.dataPoints
-          .map(x => DataRecord(job.outputChannelId, x._1, x._2))
-          .map(serialize)
-      case Left(err) =>
-        StatsD.increment("batch.errors.script")
-        Log.warn("Can't compile script:" + job.script)
-        Log.warn(err)
-        Seq()
+    try {
+      val inputTs = Await.result(Future.sequence(futures), 30.seconds)
+      StatsD.increment("batch.in.records", inputTs.map(_.length).sum)
+      make(job.script).flatMap(exec => Interpreter(exec, db.getImplementation).run("main", inputTs)) match {
+        case Right(xs) =>
+          val endTime = System.currentTimeMillis()
+          val resultTs = xs.asInstanceOf[TimeSeries[Float]]
+          StatsD.increment("batch.out.records", resultTs.length)
+          StatsD.gauge("batch.rate", 1000.0 * resultTs.length / (endTime - startTime))
+          resultTs.dataPoints
+            .map(x => DataRecord(job.outputChannelId, x._1, x._2))
+            .map(serialize)
+        case Left(err) =>
+          StatsD.increment("batch.errors.script")
+          Log.warn("Can't compile script:" + job.script)
+          Log.warn(err)
+          Seq()
+      }
+    }
+    catch {
+      case tex: TimeoutException =>
+        Log.warn(tex.getMessage)
+        process(job, db)
+      case _ => Seq()
     }
   }
 
