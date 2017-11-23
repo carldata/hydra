@@ -26,7 +26,7 @@ object BatchProcessor {
     StatsD.increment("batch")
     val futures = job.inputChannelIds.map(id => db.getSeries(id, job.startDate, job.endDate))
     try {
-      val inputTs = Await.result(Future.sequence(futures), 30.seconds)
+      val inputTs = Await.result(Future.sequence(futures), Duration.Inf)
       StatsD.increment("batch.in.records", inputTs.map(_.length).sum)
       make(job.script).flatMap(exec => Interpreter(exec, db.getImplementation).run("main", inputTs)) match {
         case Right(xs) =>
