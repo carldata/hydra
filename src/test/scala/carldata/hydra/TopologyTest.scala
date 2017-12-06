@@ -21,13 +21,7 @@ object TopologyTest {
 
   val code: String =
     """
-      |def main(dt: DateTime, a: Number): Number = a + 1
-    """.stripMargin
-
-  val mphCode: String =
-    """
-      |def f(a: Number): Number = 1.6093 * a
-      |
+      |def f(a: Number): Number = a + 1
       |def main(xs: TimeSeries): TimeSeries = map(xs, f)
     """.stripMargin
 
@@ -39,9 +33,6 @@ object TopologyTest {
     DataRecord("c0", LocalDateTime.now(), 1)
   )
 
-  val batchInput = Seq(
-    BatchRecord("6d696c6573", mphCode, Seq("kilometersPH"), "milesPH", LocalDateTime.now, LocalDateTime.now.plusDays(5))
-  )
 
   val inputSet5 = Seq(
     DataRecord("c0", LocalDateTime.now.plusMinutes(1), 1),
@@ -110,7 +101,7 @@ class TopologyTest extends FlatSpec with Matchers {
   it should "process events" in {
     val cmd: Seq[(String, String)] = computationSet1.map(x => ("", x.toJson.compactPrint))
     val input: Seq[(String, String)] = jsonStrData(inputSet5)
-    val expected = Seq(DataRecord("c-out", inputSet5(0).timestamp, 2.0f)
+    val expected = Seq(DataRecord("c-out", inputSet5.head.timestamp, 2.0f)
       , DataRecord("c-out", inputSet5(1).timestamp, 2.0f)
       , DataRecord("c-out", inputSet5(2).timestamp, 2.0f)
       , DataRecord("c-out", inputSet5(3).timestamp, 2.0f)
@@ -127,11 +118,9 @@ class TopologyTest extends FlatSpec with Matchers {
         Main.buildDataStream(builder, "", dataProcessor)
         Main.buildRealtimeStream(builder, "", rtCmdProcessor)
       }
-    streams.input("hydra-rt", strings, strings, cmd)
-    //.output[String, String]("data", strings, strings, 6)
+    val received = streams.input("hydra-rt", strings, strings, cmd)
+    .output[String, String]("data", strings, strings, 6)
 
-    val received = streams.input("data", strings, strings, input)
-      .output[String, String]("data", strings, strings, 6)
 
     fromJson(received).filter(_.channelId == "c-out") shouldEqual expected
   }
