@@ -46,7 +46,6 @@ class Testcases extends WordSpec with Matchers {
             case RealTimeProcess =>
               val xs = mkScriptRTTest(filesList.filter(_.processType == RealTimeProcess))
               xs.count(_.isLeft) shouldEqual 0
-              //xs.filter(_.isLeft).foreach(println)
               xs.filter(_.isRight).foreach { x =>
                 checkExecuteRT(x.right.get)
               }
