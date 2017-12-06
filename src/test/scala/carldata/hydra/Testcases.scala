@@ -30,7 +30,7 @@ class Testcases extends WordSpec with Matchers {
 
   case class TestCaseFile(name: String, text: String, processType: ProcessType)
 
-  case class ScriptRTTest(name: String, code: String, trigger: String, output: String, records: Seq[DataRecord], expected: Seq[DataRecord])
+  case class ScriptRTTest(name: String, code: String, trigger: Seq[String], output: String, records: Seq[DataRecord], expected: Seq[DataRecord])
 
 
   val dataProcessor = new DataProcessor(computationsDB)
@@ -46,7 +46,7 @@ class Testcases extends WordSpec with Matchers {
             case RealTimeProcess =>
               val xs = mkScriptRTTest(filesList.filter(_.processType == RealTimeProcess))
               xs.count(_.isLeft) shouldEqual 0
-              xs.filter(_.isLeft).foreach(println)
+              //xs.filter(_.isLeft).foreach(println)
               xs.filter(_.isRight).foreach { x =>
                 checkExecuteRT(x.right.get)
               }
@@ -70,7 +70,7 @@ class Testcases extends WordSpec with Matchers {
 
   def mkScriptRTTest(s: Seq[TestCaseFile]): Seq[Either[String, Testcases.this.ScriptRTTest]] = {
     s.map { f =>
-      groupToRTEither(f.name, getSection(f.text, "script"), getParams(f.text, "trigger", "hydra-rt"), getParams(f.text, "output", "hydra-rt"), getCsv(f.text, "records"), getCsv(f.text, "expected"))
+      groupToRTEither(f.name, getSection(f.text, "script"), getInputs(f.text, "trigger", "hydra-rt"), getParams(f.text, "output", "hydra-rt"), getCsv(f.text, "records"), getCsv(f.text, "expected"))
     }
   }
 
@@ -86,7 +86,7 @@ class Testcases extends WordSpec with Matchers {
 
   def checkExecuteRT(s: ScriptRTTest): Unit = {
     val computationSet: Seq[RealTimeJob] = Seq(
-      AddRealTimeJob(s.trigger + s.output, s.code, Seq(s.trigger), s.output, s.records.head.timestamp, s.records.last.timestamp)
+      AddRealTimeJob(s.trigger + s.output, s.code, s.trigger, s.output, s.records.head.timestamp, s.records.last.timestamp.plusMinutes(1))
     )
 
     val ts = s.records
@@ -104,13 +104,15 @@ class Testcases extends WordSpec with Matchers {
         Main.buildRealtimeStream(builder, "", rtCmdProcessor)
       }
 
-    streams.input("hydra-rt", strings, strings, cmd).input("data", strings, strings, input)
+    val received = streams.input("hydra-rt", strings, strings, cmd)
       .output[String, String]("data", strings, strings, s.expected.size)
-      .map(_._2.parseJson.convertTo[DataRecord])
+
+
+    received.map(_._2.parseJson.convertTo[DataRecord])
       .filter(_.channelId == s.output) shouldEqual s.expected
   }
 
-  def groupToRTEither(name: String, code: Option[String], trigger: Option[String], output: Option[String], records: Option[Seq[DataRecord]], expected: Option[Seq[DataRecord]]): Either[String, ScriptRTTest] = {
+  def groupToRTEither(name: String, code: Option[String], trigger: Option[Seq[String]], output: Option[String], records: Option[Seq[DataRecord]], expected: Option[Seq[DataRecord]]): Either[String, ScriptRTTest] = {
     val st = for {
       c <- code
       t <- trigger
@@ -143,6 +145,11 @@ class Testcases extends WordSpec with Matchers {
       .split("\n")
       .find(_.contains(param))
       .map(_.split('=')(1))
+  }
+
+  def getInputs(code: String, param: String, name: String): Option[Seq[String]] = {
+    getParams(code, param, name)
+      .map(x => x.split(","))
   }
 
   /** Select single section from testcase */
