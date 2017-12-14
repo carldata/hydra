@@ -48,7 +48,7 @@ object BatchProcessor {
       case tex: TimeoutException =>
         Log.warn(tex.getMessage)
         process(job, db)
-      case _ => Seq()
+      case _: Throwable => Seq()
     }
   }
 

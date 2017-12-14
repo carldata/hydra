@@ -1,13 +1,12 @@
 name := "hydra"
 
-version := "0.2.0"
+version := "0.3.0"
 
 scalaVersion := "2.12.4"
 
 libraryDependencies ++= Seq(
   "org.scala-lang" % "scala-reflect" % "2.12.3",
-  "org.apache.kafka" % "kafka-streams" % "0.11.0.0",
-  "com.outworkers" %% "phantom-dsl" % "2.12.1" exclude("org.slf4j","log4j-over-slf4j"),
+  "org.apache.kafka" % "kafka-clients" % "0.11.0.1",
   "io.spray" %% "spray-json" % "1.3.3" ,
   "io.github.carldata" %% "hydra-streams" % "0.5.0",
   "io.github.carldata" %% "flow-script" % "0.7.8",
@@ -18,7 +17,6 @@ libraryDependencies ++= Seq(
   "com.datadoghq" % "java-dogstatsd-client" % "2.3",
 
   // Test dependencies
-  "com.madewithtea" %% "mockedstreams" % "1.3.0" % Test,
   "org.scalatest" %% "scalatest" % "3.0.1" % Test
 
 )

@@ -12,7 +12,7 @@ import spray.json._
 /**
   * Data processing pipeline
   */
-class RTCommandProcessor(computationDB: ComputationDB, db: DBConnector) {
+class RealTimeJobProcessor(computationDB: ComputationDB, db: DBConnector) {
 
   private val Log = LoggerFactory.getLogger(this.getClass)
 
@@ -21,7 +21,6 @@ class RTCommandProcessor(computationDB: ComputationDB, db: DBConnector) {
     * The number of output events depends on how many computations are defined on given channel
     */
   def process(jsonStr: String): Seq[String] = {
-    Log.info(jsonStr)
     deserialize(jsonStr) match {
       case Some(AddRealTimeJob(calculationId, script, trigger, outputChannel, startDate, endDate)) =>
         StatsD.increment("rt.count")
